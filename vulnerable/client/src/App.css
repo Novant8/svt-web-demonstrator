@@ -1,0 +1,15 @@
+.page-card {
+    transition: border-color 0.2s ease
+}
+
+.page-card:hover {
+    border-color: var(--bs-blue);
+}
+
+.paragraph-block {
+    white-space: pre-line;
+}
+
+textarea {
+    resize: none !important;
+}

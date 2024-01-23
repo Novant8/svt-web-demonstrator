@@ -1,0 +1,96 @@
+### LOGIN AS ADMIN
+POST /api/sessions HTTP/1.1
+Host: localhost:3001
+Content-Type: application/json
+
+{
+    "username": "mario@example.org",
+    "password": "password"
+}
+### LOGIN AS USER
+POST /api/sessions HTTP/1.1
+Host: localhost:3001
+Content-Type: application/json
+
+{
+    "username": "luigi@example.org",
+    "password": "password"
+}
+### LOGOUT
+DELETE /api/sessions/current HTTP/1.1
+Host: localhost:3001
+###
+GET /api/pages HTTP/1.1
+Host: localhost:3001
+###
+GET /api/pages/1 HTTP/1.1
+Host: localhost:3001
+###
+GET /api/pages/7 HTTP/1.1
+Host: localhost:3001
+###
+POST /api/pages HTTP/1.1
+Host: localhost:3001
+Content-Type: application/json
+
+{
+  "title": "Etiam malesuada sit amet sem vitae vulputate.",
+  "publicationDate": "2023-06-06",
+  "blocks": [
+    {
+      "type": "header",
+      "content": "Nulla gravida ornare nisi, vitae bibendum sem egestas eget."
+    },
+    {
+      "type": "paragraph",
+      "content": "Mauris consequat sem a diam egestas, quis commodo mi mattis. Maecenas hendrerit nulla nisl, a tincidunt nisi malesuada eu. Donec maximus leo non ex euismod hendrerit. Etiam sagittis arcu quis consequat dignissim. Mauris vehicula lacus turpis, vitae rutrum dolor interdum et. Aliquam id faucibus justo. Donec posuere venenatis erat auctor pharetra. Phasellus dignissim justo eget maximus porttitor. Nulla tristique, tortor at scelerisque lobortis, justo nisl iaculis risus, ut molestie mi tellus ut dui."
+    },
+    {
+      "type": "image",
+      "content": "landscape.jpg"
+    }
+  ]
+}
+###
+PUT /api/pages/1 HTTP/1.1
+Host: localhost:3001
+Content-Type: application/json
+
+{
+  "title": "Etiam malesuada sit amet sem vitae vulputate.",
+  "publicationDate": "2023-06-06",
+  "author": 2,
+  "blocks": [
+    {
+      "id": 1,
+      "type": "header",
+      "content": "Nulla gravida ornare nisi, vitae bibendum sem egestas eget."
+    },
+    {
+      "type": "image",
+      "content": "car.jpg"
+    },
+    {
+      "id": 2,
+      "type": "paragraph",
+      "content": "Mauris consequat sem a diam egestas, quis commodo mi mattis. Maecenas hendrerit nulla nisl, a tincidunt nisi malesuada eu. Donec maximus leo non ex euismod hendrerit. Etiam sagittis arcu quis consequat dignissim. Mauris vehicula lacus turpis, vitae rutrum dolor interdum et. Aliquam id faucibus justo. Donec posuere venenatis erat auctor pharetra. Phasellus dignissim justo eget maximus porttitor. Nulla tristique, tortor at scelerisque lobortis, justo nisl iaculis risus, ut molestie mi tellus ut dui."
+    }
+  ]
+}
+###
+DELETE /api/pages/2
+Host: localhost:3001
+###
+GET /api/website/name
+Host: localhost:3001
+###
+PUT /api/website/name
+Host: localhost:3001
+Content-Type: application/json
+
+{
+  "name": "My Website"
+}
+###
+GET /api/users
+Host: localhost:3001
