@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import { TODAY } from '../lib/date'
 import '../../../typedefs'
+import { parse as toXML } from 'js2xmlparser'
 
 import { addPage, editPage, getPageDetails, listImages, listUsers } from '../lib/api'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -302,7 +303,7 @@ export default function PageForm({ onAdd, onEdit }) {
         if(!validate())
             return;
 
-        /* Build API object */
+        /* Build local JSON object of page */
         const page = {
             title,
             author,
@@ -311,10 +312,21 @@ export default function PageForm({ onAdd, onEdit }) {
         }
         setLoading(true);
         setError('');
-        
+
+        /* Convert page to XML format before sending to server. */
+        const pageXml = toXML("page", {
+            '@': {title, author, publicationDate},
+            block: blocks.map(block => ({
+                '@': {
+                    type: block.type
+                },
+                '#': block.content
+            }))
+        });
+
         let promise;
         if(isEdit)
-            promise = editPage(edit_id, page)
+            promise = editPage(edit_id, pageXml)
                         .then(({ blocks }) => {
                             /* Remove invalidFeedback from all blocks. */
                             page.blocks = 
@@ -334,7 +346,7 @@ export default function PageForm({ onAdd, onEdit }) {
                             return `/pages/${edit_id}`;
                         });
         else
-            promise = addPage(page)
+            promise = addPage(pageXml)
                         .then(({ id, blocks }) => {
                             /* Assign ID to the new page and blocks. */
                             page.id = id;

@@ -168,7 +168,7 @@ export async function getPageDetails(id) {
 
 /**
  * Adds a page, with its relative blocks, to the database
- * @param {PageWithBlocks} page         - The page
+ * @param {string} page                 - The page, in XML format
  * @returns {Promise<AddPageResponse>}  - Promise that resolves if the page has been successfully added. 
  * @throws {Error}                      - Message describing any error that occurred.
  */
@@ -177,9 +177,9 @@ export async function addPage(page) {
         method: "POST",
         credentials: 'include',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'text/plain'
         },
-        body: JSON.stringify(page)
+        body: page
     });
 
     if(!res.ok)
@@ -198,7 +198,7 @@ export async function addPage(page) {
 /**
  * Updates an existing page's information.
  * @param {number} pageId               - ID of the page to edit
- * @param {Page} page                   - The page, with updated information
+ * @param {string} page                 - The page's XML, with updated information
  * @returns {Promise<EditPageResponse>} - Promise that resolves if the page has successfully been modified
  * @throws {string}                     - Message describing any error that occurred.
  */
@@ -207,9 +207,9 @@ export async function editPage(pageId, page) {
         method: "PUT",
         credentials: 'include',
         headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "text/plain"
         },
-        body: JSON.stringify(page)
+        body: page
     });
 
     if(!res.ok)
