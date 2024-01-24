@@ -11,6 +11,7 @@ const morgan = require('morgan');
 const { listPages, getPageWithBlocks, createPage, deletePage, changeWebsiteName, getWebsiteName, editPage, listImages, pageHasBlock, getPage } = require('./lib/dao.js');
 const { check, validationResult } = require('express-validator');
 const { listUsers, isRegisteredUser } = require('./lib/user-dao.js');
+const { parsePageXML } = require("./lib/xml.js");
 
 /**
  * init express
@@ -22,6 +23,7 @@ const port = 3001;
 // build app main middleware
 app
   .use(morgan("dev"))
+  .use(express.text())
   .use(express.json())
   .use(cors({
     origin: 'http://localhost:5173',
@@ -145,7 +147,7 @@ const addValidationChain = [
 
 // POST /pages
 // create a new page
-app.post("/api/pages", isLoggedIn, addValidationChain, validateBody, (req, res) => {
+app.post("/api/pages", isLoggedIn, parsePageXML, addValidationChain, validateBody, (req, res) => {
   let page      = req.body;
   const author  = page.author || req.user.id;
   createPage(page, author)
@@ -191,7 +193,7 @@ const editValidationChain = [
 
 // PUT /pages
 // edit existing page
-app.put("/api/pages/:id", isLoggedIn, editValidationChain, validateBody, (req, res) => {
+app.put("/api/pages/:id", isLoggedIn, parsePageXML, editValidationChain, validateBody, (req, res) => {
   let id        = parseInt(req.params.id);
   let page      = { ...req.body, id };
   const author  = page.author || req.user.id;
