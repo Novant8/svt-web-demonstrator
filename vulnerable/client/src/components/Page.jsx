@@ -163,7 +163,7 @@ function HeaderBlock({ content }) {
 }
 
 function ParagraphBlock({ content }) {
-    return <p className="paragraph-block">{content}</p>
+    return <div className="paragraph-block" dangerouslySetInnerHTML={{ __html: content }} />
 }
 
 function ImageBlock({ file }) {
