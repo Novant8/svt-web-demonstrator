@@ -21,7 +21,7 @@ import PageRow, { PageRowPlaceholder } from './PageRow';
 export default function PageList({ office, pages, loading, error, onPageDelete }) {
     const { user } = useContext(UserContext);
     const isLoggedIn = !!user;
-
+    
     const { state } = useLocation();
     
     /**

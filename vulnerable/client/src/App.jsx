@@ -17,6 +17,7 @@ import PageList from './components/PageList';
 import Page from './components/Page';
 import PageForm from './components/PageForm';
 import NotFound from './components/NotFound';
+import RegisterForm from './components/RegisterForm';
 
 function App() {
   const { user, loadingUser, userError } = useContext(UserContext);
@@ -146,6 +147,15 @@ function App() {
               loadingUser ? <CenteredSpinner /> :
               /* The Navigate component was moved into the the LoginForm component, which keeps track of the previous page. */
               <LoginForm onLogin={() => refresh()} />
+            }
+          />
+           <Route
+            exact path="/register"
+            element={
+              userError ? <Alert variant="danger" className="text-center"><strong>Error:</strong> { userError }</Alert> :
+             /*  loadingUser ? <CenteredSpinner /> : */
+              /* The Navigate component was moved into the the LoginForm component, which keeps track of the previous page. */
+              <RegisterForm onRegister={() => refresh()} />
             }
           />
           <Route

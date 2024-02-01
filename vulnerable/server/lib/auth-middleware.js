@@ -1,12 +1,14 @@
 "use strict";
 
-const passport = require('passport'); // auth middleware
-const LocalStrategy = require('passport-local').Strategy; // username and password for login
-
+const jwt = require("jsonwebtoken");
 const userDao = require('./user-dao'); // module for accessing the user info in the DB
 
+
+//JSON WEB TOKEN SECRET
+const jwtSecret = "mydfs68jlk5620jds7akl8m127a8sdh168hj";
+
 /*** Set up Passport ***/
-// set up the "username and password" login strategy
+/* // set up the "username and password" login strategy
 // by setting a function to verify username and password
 passport.use(new LocalStrategy(
 function(username, password, done) {
@@ -33,7 +35,16 @@ passport.deserializeUser((id, done) => {
         }).catch(err => {
             done(err, null);
         });
-});
+}); */
+
+exports.login = async (credentials)=>{
+   
+    const password = credentials.password;
+    const username = credentials.username ;
+
+    return await userDao.getUser(username,password).then(user => {return user;}).catch(err =>console.log(err) )
+    
+}
 
 /**
  * Middleware that checks if a given request is coming from an authenticated user
@@ -42,8 +53,11 @@ passport.deserializeUser((id, done) => {
  * @param {Express.NextFunction} next
  */
 exports.isLoggedIn = (req, res, next) => {
-if(req.isAuthenticated())
-    return next();
+    
+    if(req.cookies.access_token){
+        return next();
+    }
+    
 
     return res.status(401).json({ error: 'Not authenticated'});
 }
@@ -55,10 +69,17 @@ if(req.isAuthenticated())
  * @param {Express.NextFunction} next
  */
 exports.isAdmin = (req, res, next) => {
-    if(req.isAuthenticated() && req.user.admin)
-        return next();
+    const token = req.cookies.access_token;
+    if(token){
+        let decoded = jwt.decode(token,jwtSecret)
+        if (decoded.id)
+            return next();
+        
+        return res.status(401).json({ error: 'You are not the admin !'});
+    }
+
+        
 
     return res.status(401).json({ error: 'Not authenticated'});
 }
 
-exports.passport = passport;

@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react';
 import validator from "validator";
 
-import { login } from "../lib/api";
+import { register } from "../lib/api";
 
 import { UserContext } from "../context/UserContext";
 
@@ -11,11 +11,19 @@ import { Link, Navigate, useLocation } from 'react-router-dom';
 /**
  * 
  * @param {object} props
- * @param {(user: User) => (void | Promise<void>)} props.onLogin
+ * @param {(user: User) => (void | Promise<void>)} props.onRegister
  */
-export default function LoginForm({ onLogin }) {
+export default function RegisterForm({ onRegister }) {
+     /* Username state */
+     const [ name, _setName ]            = useState('');
+     const [ nameError, setNameError ]   = useState('');
+
+     const setName = (name) => {
+        _setName(name);
+         setUsernameError('');
+     }
     /* Username state */
-    const [ username, _setUsername ]            = useState('mario@example.org');
+    const [ username, _setUsername ]            = useState('');
     const [ usernameError, setUsernameError ]   = useState('');
     const setUsername = (username) => {
         _setUsername(username);
@@ -23,7 +31,7 @@ export default function LoginForm({ onLogin }) {
     }
 
     /* Passsword state */
-    const [ password, _setPassword ]            = useState('password');
+    const [ password, _setPassword ]            = useState('');
     const [ passwordError, setPasswordError ]   = useState('');
     const setPassword = (password) => {
         _setPassword(password);
@@ -39,12 +47,11 @@ export default function LoginForm({ onLogin }) {
     const { state } = useLocation();
     const prevLocation = state?.prevLocation;
 
-    const doLogIn = (credentials) => {
+    const doSignUp = (credentials) => {
         setLoading(true);
-        login(credentials)
-            .then(user => onLogin(user)?.then(() => user) ?? user)
+        register(credentials)
+            .then(user => onRegister(user)?.then(() => user) ?? user)
             .then(user => {
-                
                 setError('');
                 setUser(user);
             })
@@ -64,6 +71,9 @@ export default function LoginForm({ onLogin }) {
         } else if(!validator.isEmail(username)) {
             setUsernameError("Username is not a valid e-mail.");
             valid = false;
+        }else if (!name){
+            setNameError("Please insert your name.");
+            valid = false;
         }
 
         if(password.length === 0) {
@@ -77,10 +87,11 @@ export default function LoginForm({ onLogin }) {
     const handleSubmit = (event) => {
         event.preventDefault();
         setError('');
-        const credentials = { username, password };
+        const admin = false; 
+        const credentials = { name, username, password ,admin};
         
         if(validate())
-            doLogIn(credentials);
+            doSignUp(credentials);
     };
 
     if(user) {
@@ -95,13 +106,27 @@ export default function LoginForm({ onLogin }) {
         <Container>
             <Row className="justify-content-center">
                 <Col xs={6}>
-                    <h2>Login</h2>
+                    <h2>Sign Up </h2>
                     <Form onSubmit={handleSubmit} className="mb-3">
+                    <Form.Group controlId='name' className="my-3">
+                            <Form.Label>Name</Form.Label>
+                            <Form.Control
+                                type='text'
+                                value={name}
+                                placeholder='Insert your name'
+                                isInvalid={!!nameError}
+                                onChange={ev => setName(ev.target.value)}
+                                disabled={loading}
+                                autoFocus
+                            />
+                            <Form.Control.Feedback type="invalid">{usernameError}</Form.Control.Feedback>
+                        </Form.Group>
                         <Form.Group controlId='username' className="my-3">
                             <Form.Label>Email</Form.Label>
                             <Form.Control
                                 type='email'
                                 value={username}
+                                placeholder='Insert your email'
                                 isInvalid={!!usernameError}
                                 onChange={ev => setUsername(ev.target.value)}
                                 disabled={loading}
@@ -114,13 +139,14 @@ export default function LoginForm({ onLogin }) {
                             <Form.Control
                                 type='password'
                                 value={password}
+                                placeholder='Insert your password'
                                 isInvalid={!!passwordError}
                                 onChange={ev => setPassword(ev.target.value)}
                                 disabled={loading}
                             />
                             <Form.Control.Feedback type="invalid">{passwordError}</Form.Control.Feedback>
                         </Form.Group>
-                        <Button type='submit' disabled={loading}>Login</Button>
+                        <Button type='submit' disabled={loading}>Sign Up</Button>
                         <Button className={[ 'mx-2', loading ? 'disabled' : '' ].join(' ')} variant='danger' as={Link} to={prevLocation || "/front"} disabled={loading}>Cancel</Button>
                     </Form>
                     {

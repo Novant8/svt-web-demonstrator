@@ -85,6 +85,30 @@ export async function login(credentials) {
 }
 
 /**
+ * Register to the API
+ * @param {Credentials} credentials - Username and password of user
+ * @returns {Promise<User>}         - Promise that resolves with the user info
+ * @throws {string}                 - Message describing any error that occurred.
+ */
+export async function register(credentials) {
+    const res = await myFetch(`${HOST}/api/register`, {
+        method: "POST",
+        credentials: 'include',
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(credentials)
+    });
+
+    if(res.ok) {
+        const user = await res.json();
+        return user;
+    } else {
+        throw await getErrorMessageFromResponse(res);
+    }
+}
+
+/**
  * Logs out using the API
  * @returns {Promise<void>} - Promise that resolves if the operation is successful
  * @throws {string}         - Message describing any error that occurred.
@@ -109,12 +133,15 @@ export async function getLoggedUser() {
         method: "GET",
         credentials: "include"
     });
+    
 
     if(res.ok) {
         return await res.json();
     } else if(res.status === 401) {
+        
         return null;
     } else {
+        
         throw await getErrorMessageFromResponse(res);
     }
 }
