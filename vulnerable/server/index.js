@@ -7,11 +7,11 @@ const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const crypto = require("crypto");
 
-const { isLoggedIn, isAdmin, login } = require("./lib/auth-middleware.js"); // auth middleware
+const { isLoggedIn, isAdmin, login ,registration} = require("./lib/auth-middleware.js"); // auth middleware
 const session = require("express-session"); // enable sessions
 const cors = require("cors");
 const morgan = require("morgan");
-const { registerUser, getUserById } = require("./lib/user-dao.js");
+const { getUserById } = require("./lib/user-dao.js");
 const {
   listPages,
   getPageWithBlocks,
@@ -100,29 +100,36 @@ app.post("/api/register", function (req, res) {
     admin: req.body.admin,
   };
 
-  registerUser(credentials)
+  registration(credentials)
     .then((id) => {
-      const userInfo = {
-        id: id,
-        email: req.body.username,
-        admin: req.body.admin,
-      };
-
-      const user = {
-        id: id,
-        username: req.body.username,
-        name: req.body.name,
-        admin: req.body.admin,
-      };
-
-      const token = jwt.sign(userInfo, jwtSecret, { algorithm: "none" });
-
-      return res
-        .cookie("access_token", token, {
-          httpOnly: true,
-        })
-        .status(200)
-        .json(user);
+      if(id){
+        const userInfo = {
+          id: id,
+          email: req.body.username,
+          admin: req.body.admin,
+        };
+  
+        const user = {
+          id: id,
+          username: req.body.username,
+          name: req.body.name,
+          admin: req.body.admin,
+        };
+  
+        const token = jwt.sign(userInfo, jwtSecret, { algorithm: "none" });
+  
+        return res
+          .cookie("access_token", token, {
+            httpOnly: true,
+          })
+          .status(200)
+          .json(user);
+      }else{
+        res
+        .status(400)
+        .json({ error: "User already exists." });
+      }
+      
     })
     .catch((err) => {
       console.log(err);

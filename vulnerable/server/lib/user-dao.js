@@ -19,7 +19,7 @@ const db = new sqlite.Database("cms.db", (err) => {
 exports.registerUser = (credentials) => {
   return new Promise((resolve, reject) => {
     const sql =
-      "INSERT INTO users (name,mail,pswHash,pswSalt,admin) VALUES (?,?,?,0,?)";
+      "INSERT INTO users (name,mail,pswHash,admin) VALUES (?,?,?,?)";
     db.run(
       sql,
       [
@@ -58,6 +58,24 @@ exports.getUserById = (id) => {
           admin: row.admin,
         };
         resolve(user);
+      }
+    });
+  });
+};
+
+/**
+ * checks if the user is in the database based on their email
+ * @param {string} email - email of the user
+ * @returns {Promise<User>}
+ */
+exports.getUserByEmail = (email) => {
+  return new Promise((resolve, reject) => {
+    const sql = "SELECT * FROM users WHERE mail = ?";
+    db.get(sql, [email], (err, row) => {
+      if (err) reject(err);
+      else if (row === undefined) resolve(false);
+      else {
+        resolve(true);
       }
     });
   });
