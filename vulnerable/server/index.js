@@ -12,6 +12,7 @@ const { listPages, getPageWithBlocks, createPage, deletePage, changeWebsiteName,
 const { check, validationResult } = require('express-validator');
 const { listUsers, isRegisteredUser } = require('./lib/user-dao.js');
 const { parsePageXML } = require("./lib/xml.js");
+const { downloadBlockImages } = require("./lib/image-upload.js");
 
 /**
  * init express
@@ -23,7 +24,7 @@ const port = 3001;
 // build app main middleware
 app
   .use(morgan("dev"))
-  .use(express.text({ type: "text/xml" }))
+  .use(express.text({ type: "text/xml", limit: "25mb" }))
   .use(express.json())
   .use(cors({
     origin: 'http://localhost:5173',
@@ -138,16 +139,11 @@ const addValidationChain = [
   check("blocks")
     .custom(blocks => blocks.some(b => b.type === 'header') && blocks.some(b => b.type !== 'header'))
     .withMessage("The page must contain at least one header and another type of block.")
-    .custom(async blocks => {
-      const allowed_filenames = (await listImages()).map(img => img.filename);
-      if(blocks.some(b => b.type === 'image' && !allowed_filenames.includes(b.content)))
-        throw new Error(`Image blocks' content must be one of these values: ${allowed_filenames.join(', ')}.`)
-    })
 ];
 
 // POST /pages
 // create a new page
-app.post("/api/pages", isLoggedIn, parsePageXML, addValidationChain, validateBody, (req, res) => {
+app.post("/api/pages", isLoggedIn, parsePageXML, addValidationChain, validateBody, downloadBlockImages, (req, res) => {
   let page      = req.body;
   const author  = page.author || req.user.id;
   createPage(page, author)
