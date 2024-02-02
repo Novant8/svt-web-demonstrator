@@ -8,18 +8,22 @@ const jwtSecret = "mydfs68jlk5620jds7akl8m127a8sdh168hj";
 
 exports.registration = async (credentials) => {
   const username = credentials.username;
-
-  return await userDao
-    .getUserByEmail(username)
-    .then((response) => {
-        if (!response){
-            userDao.registerUser(credentials).then(id=>{return id;}).catch (err=>console.log(err))
-        } 
-        
+  try {
+    const response = await userDao.getUserByEmail(username)
+    if (response){
+      return null
+    } else{
+      const id = await userDao.registerUser(credentials)
+      if ( typeof id === "number"){
+        return id; 
+      }else {
         return null; 
-     
-    })
-    .catch((err) => console.log(err));
+      }
+    }
+  } catch (error) {
+    console.log(error)
+  }
+  
 };
 
 exports.login = async (credentials) => {

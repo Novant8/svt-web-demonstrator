@@ -18,8 +18,7 @@ const db = new sqlite.Database("cms.db", (err) => {
  */
 exports.registerUser = (credentials) => {
   return new Promise((resolve, reject) => {
-    const sql =
-      "INSERT INTO users (name,mail,pswHash,admin) VALUES (?,?,?,?)";
+    const sql = "INSERT INTO users (name, mail, pswHash, admin) VALUES (?,?,?,?)";
     db.run(
       sql,
       [
@@ -28,15 +27,18 @@ exports.registerUser = (credentials) => {
         credentials.password,
         credentials.admin,
       ],
-      (err, row) => {
-        if (err) reject(err);
-        else {
+      function (err) {
+        if (err) {
+          reject(err);
+        } else {
+          console.log("LASTID", this.lastID);
           resolve(this.lastID);
         }
       }
     );
   });
 };
+
 
 /**
  * Retrieves user info from the database, given their ID
@@ -102,9 +104,8 @@ exports.getUser = (email, password) => {
           name: row.name,
           admin: row.admin,
         };
-        console.log("COMPARE", password ,row.pswHash )
-        if (password !== row.pswHash )
-          resolve(false);
+        console.log("COMPARE", password, row.pswHash);
+        if (password !== row.pswHash) resolve(false);
         else resolve(user);
       }
     });

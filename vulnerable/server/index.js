@@ -7,7 +7,12 @@ const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const crypto = require("crypto");
 
-const { isLoggedIn, isAdmin, login ,registration} = require("./lib/auth-middleware.js"); // auth middleware
+const {
+  isLoggedIn,
+  isAdmin,
+  login,
+  registration,
+} = require("./lib/auth-middleware.js"); // auth middleware
 const session = require("express-session"); // enable sessions
 const cors = require("cors");
 const morgan = require("morgan");
@@ -65,20 +70,24 @@ app.post("/api/sessions", (req, res) => {
 
   login(credentials)
     .then((user) => {
-      // this is coming from userDao.getUser()
-      const userInfo = {
-        id: user.id,
-        email: user.username,
-        admin: user.admin,
-      };
-      const token = jwt.sign(userInfo, jwtSecret, { algorithm: "none" });
+      if (user) {
+        // this is coming from userDao.getUser()
+        const userInfo = {
+          id: user.id,
+          email: user.username.trim().toLowerCase(),
+          admin: user.admin,
+        };
+        const token = jwt.sign(userInfo, jwtSecret, { algorithm: "none" });
 
-      return res
-        .cookie("access_token", token, {
-          httpOnly: true,
-        })
-        .status(200)
-        .json(user);
+        return res
+          .cookie("access_token", token, {
+            httpOnly: true,
+          })
+          .status(200)
+          .json(user);
+      }else {
+        res.status(400).json({ error: " The Email or Password is wrong " });
+      }
     })
     .catch((err) => {
       return err;
@@ -87,7 +96,7 @@ app.post("/api/sessions", (req, res) => {
 
 // POST /register
 // sign up
-app.post("/api/register", function (req, res) {
+app.post("/api/register", async function (req, res) {
   const hashedPassword = crypto
     .createHash("md5")
     .update(req.body.password)
@@ -95,48 +104,46 @@ app.post("/api/register", function (req, res) {
 
   const credentials = {
     name: req.body.name,
-    username: req.body.username,
+    username: req.body.username.trim().toLowerCase(),
     password: hashedPassword,
     admin: req.body.admin,
   };
-
-  registration(credentials)
-    .then((id) => {
-      if(id){
-        const userInfo = {
-          id: id,
-          email: req.body.username,
-          admin: req.body.admin,
-        };
-  
-        const user = {
-          id: id,
-          username: req.body.username,
-          name: req.body.name,
-          admin: req.body.admin,
-        };
-  
-        const token = jwt.sign(userInfo, jwtSecret, { algorithm: "none" });
-  
-        return res
-          .cookie("access_token", token, {
-            httpOnly: true,
-          })
-          .status(200)
-          .json(user);
-      }else{
-        res
-        .status(400)
-        .json({ error: "User already exists." });
-      }
+  try {
+    const id = await registration(credentials);
+    console.log("HERE ID", id);
+    if (id == null) {
+      res.status(400).json({ error: "User already exists." });
+    } else {
       
-    })
-    .catch((err) => {
-      console.log(err);
-      res
-        .status(500)
-        .json({ error: "Unable to register the user into the database." });
-    });
+
+      const userInfo = {
+        id: id,
+        email: req.body.username,
+        admin: req.body.admin,
+      };
+
+      const user = {
+        id: id,
+        username: req.body.username,
+        name: req.body.name,
+        admin: req.body.admin,
+      };
+
+      const token = jwt.sign(userInfo, jwtSecret, { algorithm: "none" });
+
+      return res
+        .cookie("access_token", token, {
+          httpOnly: true,
+        })
+        .status(200)
+        .json(user);
+    }
+  } catch (err) {
+    console.log(err);
+    res
+      .status(500)
+      .json({ error: "Unable to register the user into the database." });
+  }
 });
 
 // DELETE /sessions/current
@@ -174,7 +181,7 @@ app.get("/api/sessions/current", isLoggedIn, (req, res) => {
 // list all pages
 app.get("/api/pages", (req, res) => {
   const token = req.cookies.access_token;
-  let user= undefined;
+  let user = undefined;
   if (token) {
     user = jwt.decode(token, jwtSecret);
   }
@@ -193,7 +200,7 @@ app.get("/api/pages", (req, res) => {
 app.get("/api/pages/:id", (req, res) => {
   const page_id = parseInt(req.params.id);
   const token = req.cookies.access_token;
-  let user= undefined;
+  let user = undefined;
   if (token) {
     user = jwt.decode(token, jwtSecret);
   }
@@ -278,7 +285,6 @@ app.post(
 
     const token = req.cookies.access_token;
     let user = jwt.decode(token, jwtSecret);
-    
 
     const author = page.author || user.id;
     createPage(page, author)
@@ -302,11 +308,11 @@ app.post(
 async function validPageID(req, res, next) {
   const pageId = parseInt(req.params.id);
   const token = req.cookies.access_token;
-  let user = undefined
-  if (token){
+  let user = undefined;
+  if (token) {
     user = jwt.decode(token, jwtSecret);
   }
-  
+
   if (typeof (await getPage(pageId, user)) === "undefined")
     res.status(404).json({ error: "Page not found!" });
   else next();
