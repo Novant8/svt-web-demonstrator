@@ -177,7 +177,7 @@ export async function addPage(page) {
         method: "POST",
         credentials: 'include',
         headers: {
-            'Content-Type': 'text/plain'
+            'Content-Type': 'text/xml'
         },
         body: page
     });
@@ -207,7 +207,7 @@ export async function editPage(pageId, page) {
         method: "PUT",
         credentials: 'include',
         headers: {
-            "Content-Type": "text/plain"
+            "Content-Type": "text/xml"
         },
         body: page
     });

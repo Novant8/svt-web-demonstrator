@@ -23,7 +23,7 @@ const port = 3001;
 // build app main middleware
 app
   .use(morgan("dev"))
-  .use(express.text())
+  .use(express.text({ type: "text/xml" }))
   .use(express.json())
   .use(cors({
     origin: 'http://localhost:5173',
