@@ -13,12 +13,11 @@ const HOST = "http://localhost:3001";
 async function getErrorMessageFromResponse(res) {
     if(res.ok)
         throw new Error("Response is OK!");
-
-    if(res.status === 422)
-        return "The request had an invalid body.";
     
     try {
-        const { error } = await res.json();
+        let { error, errors } = await res.json();
+        if(typeof errors !== 'undefined' && res.status === 422)
+            error = "The request had an invalid body.";
         return error;
     } catch(err) {
         /* SyntaxError is thrown when the response body is not JSON. In that case, ignore. */
