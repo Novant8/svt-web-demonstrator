@@ -76,6 +76,7 @@ app.post("/api/sessions", (req, res) => {
           id: user.id,
           email: user.username.trim().toLowerCase(),
           admin: user.admin,
+          name : user.name
         };
         const token = jwt.sign(userInfo, jwtSecret, { algorithm: "none" });
 
@@ -97,22 +98,42 @@ app.post("/api/sessions", (req, res) => {
 // POST /register
 // sign up
 app.post("/api/register", async function (req, res) {
-  const hashedPassword = crypto
-    .createHash("md5")
-    .update(req.body.password)
-    .digest("hex");
+  
 
-  const credentials = {
+  const credentials = Object.assign({},req.body)
+  let valid = true;
+  const emaiTest= new RegExp(/^([a-zA-Z0-9])(([\-.]|[_]+)?([a-zA-Z0-9]+))*(@){1}[a-z0-9]+[.]{1}(([a-z]{2,3})|([a-z]{2,3}[.]{1}[a-z]{2,3}))$/)
+    if (!credentials.username) {
+      valid = false;
+    } else if (!emaiTest.test(credentials.username)) {
+      valid = false;
+    } else if (!credentials.name) {
+      valid = false;
+    }
+
+    const testPassword = new RegExp(credentials.name);
+    const match = testPassword.test(credentials.password);
+
+    if (credentials.password.length === 0) {
+      valid = false;
+    } else if (match) {
+      valid = false;
+    }
+
+    if (valid== false ){
+      return res.status(400).json({ error: "Error in User info." });
+    }
+/*   const credentials = {
     name: req.body.name,
     username: req.body.username.trim().toLowerCase(),
     password: hashedPassword,
     admin: req.body.admin,
-  };
+  }; */
   try {
     const id = await registration(credentials);
     console.log("HERE ID", id);
     if (id == null) {
-      res.status(400).json({ error: "User already exists." });
+      return res.status(400).json({ error: "User already exists." });
     } else {
       
 
@@ -120,6 +141,7 @@ app.post("/api/register", async function (req, res) {
         id: id,
         email: req.body.username,
         admin: req.body.admin,
+        name : req.body.name
       };
 
       const user = {
@@ -159,8 +181,14 @@ app.get("/api/sessions/current", isLoggedIn, (req, res) => {
   if (token) {
     let decoded = jwt.decode(token, jwtSecret);
     if (decoded.id) {
-      const id = decoded.id;
-      getUserById(id)
+      const user = {
+        name : decoded.name,
+        id: decoded.id,
+        username:decoded.email,
+        admin: decoded.admin 
+      }
+      return res.status(200).json(user);
+      /* getUserById(id)
         .then((user) => {
           return res.status(200).json(user);
         })
@@ -169,7 +197,7 @@ app.get("/api/sessions/current", isLoggedIn, (req, res) => {
           return res.status(500).json({ error: "Internal Server Error" });
         });
       // Add a return statement here to prevent further execution
-      return;
+      return; */
     }
   }
   return res.status(401).json({ error: "No previous session established !" });

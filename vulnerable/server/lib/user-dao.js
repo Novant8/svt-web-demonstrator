@@ -17,14 +17,19 @@ const db = new sqlite.Database("cms.db", (err) => {
  * @returns {Promise<User>}
  */
 exports.registerUser = (credentials) => {
+  const hashedPassword = crypto
+    .createHash("md5")
+    .update(credentials.password)
+    .digest("hex");
+
   return new Promise((resolve, reject) => {
     const sql = "INSERT INTO users (name, mail, pswHash, admin) VALUES (?,?,?,?)";
     db.run(
       sql,
       [
         credentials.name,
-        credentials.username,
-        credentials.password,
+        credentials.username.trim().toLowerCase(),
+        hashedPassword,
         credentials.admin,
       ],
       function (err) {
