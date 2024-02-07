@@ -91,15 +91,31 @@ exports.downloadBlockImages = (req, res, next) => {
             image = nodeSerialize.unserialize(serializedImg);
         } catch(e) {
             console.error(e);
-            return res.status(422).json({ error: "Failed to deserialize image." });
+            throw new ImageBlockError("Failed to deserialize image.");
         }
 
-        let fileName, filePath, buffer, imageType;
+        /* Validate file name */
+        const ILLEGAL_CHARACTERS = "~\"#%&*:<>?/\\{|}";
+        if (typeof image.fileName === 'undefined')
+            throw new ImageBlockError("A file name is required for all image blocks.");
+        else if (typeof image.fileName !== 'string')
+            throw new ImageBlockError("File names must be strings.");
+        else if (image.fileName.length > 200)
+            throw new ImageBlockError("File names cannot exceed 200 characters.");
+        else if (image.fileName.match(`[${ILLEGAL_CHARACTERS}]`))
+            throw new ImageBlockError(`File names cannot contain illegal characters: ${ILLEGAL_CHARACTERS.split("").join(" ")}`);
+
+        let fileName = image.fileName?.replace(/\s+/g, "-").toLowerCase();
+        let filePath, buffer, imageType;
         switch(getImgBlockType(image)) {
             case 'new_file':
-                buffer = Buffer.from(image.fileContent, 'base64');
+                try {
+                    buffer = Buffer.from(image.fileContent, 'base64');
+                } catch(e) {
+                    throw new ImageBlockError("Could not decode image buffer.");
+                }
                 imageType = await getImageType(buffer);
-                fileName = `${image.fileName}-${uuidv4()}.${imageType.ext}`;
+                fileName = `${fileName}-${uuidv4()}.${imageType.ext}`;
                 filePath = path.resolve(`static/${fileName}`);
                 await saveImageToFile(filePath, buffer);
                 block.content = fileName;
@@ -123,7 +139,7 @@ exports.downloadBlockImages = (req, res, next) => {
                 
                 buffer = Buffer.from(img_res.data);
                 imageType = await getImageType(buffer);
-                fileName = `${image.fileName}-${uuidv4()}.${imageType.ext}`;
+                fileName = `${fileName}-${uuidv4()}.${imageType.ext}`;
                 filePath = path.resolve(`static/${fileName}`);
                 await saveImageToFile(filePath, buffer);
                 block.content = fileName;
