@@ -95,15 +95,12 @@ exports.downloadBlockImages = (req, res, next) => {
         }
 
         /* Validate file name */
-        const ILLEGAL_CHARACTERS = "~\"#%&*:<>?/\\{|}";
         if (typeof image.fileName === 'undefined')
             throw new ImageBlockError("A file name is required for all image blocks.");
         else if (typeof image.fileName !== 'string')
             throw new ImageBlockError("File names must be strings.");
         else if (image.fileName.length > 200)
             throw new ImageBlockError("File names cannot exceed 200 characters.");
-        else if (image.fileName.match(`[${ILLEGAL_CHARACTERS}]`))
-            throw new ImageBlockError(`File names cannot contain illegal characters: ${ILLEGAL_CHARACTERS.split("").join(" ")}`);
 
         let fileName = image.fileName?.replace(/\s+/g, "-").toLowerCase();
         let filePath, buffer, imageType;
