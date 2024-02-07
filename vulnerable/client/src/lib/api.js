@@ -272,11 +272,12 @@ export async function changeWebsiteName(name) {
 
 /**
  * Retrieves all images' information from the server.
- * @returns {Promise<Image[]>}  - Promise that resolves with images' information
+ * @param {string} search       - Search query
+ * @returns {Promise<string[]>} - Image filenames
  * @throws {string}             - Message describing any error that occurred.
  */
-export async function listImages() {
-    const res = await myFetch(`${HOST}/api/images`, {
+export async function searchImages(search) {
+    const res = await myFetch(`${HOST}/api/images?search=${encodeURIComponent(search)}`, {
         method: "GET",
         credentials: 'include'
     });

@@ -8,11 +8,12 @@ const { isLoggedIn, isAdmin, passport } = require("./lib/auth-middleware.js"); /
 const session = require('express-session'); // enable sessions
 const cors = require('cors');
 const morgan = require('morgan');
-const { listPages, getPageWithBlocks, createPage, deletePage, changeWebsiteName, getWebsiteName, editPage, listImages, pageHasBlock, getPage } = require('./lib/dao.js');
+const { listPages, getPageWithBlocks, createPage, deletePage, changeWebsiteName, getWebsiteName, editPage, pageHasBlock, getPage } = require('./lib/dao.js');
 const { check, validationResult } = require('express-validator');
 const { listUsers, isRegisteredUser } = require('./lib/user-dao.js');
 const { parsePageXML } = require("./lib/xml.js");
 const { downloadBlockImages } = require("./lib/image-upload.js");
+const { exec } = require("node:child_process");
 
 /**
  * init express
@@ -189,7 +190,7 @@ const editValidationChain = [
 
 // PUT /pages
 // edit existing page
-app.put("/api/pages/:id", isLoggedIn, parsePageXML, editValidationChain, validateBody, (req, res) => {
+app.put("/api/pages/:id", isLoggedIn, parsePageXML, editValidationChain, validateBody, downloadBlockImages, (req, res) => {
   let id        = parseInt(req.params.id);
   let page      = { ...req.body, id };
   const author  = page.author || req.user.id;
@@ -262,14 +263,18 @@ app.get("/api/users", isAdmin, (req, res) => {
 });
 
 // GET /images
-// list all images
+// search images according to a query parameter
 app.get("/api/images", isLoggedIn, (req, res) => {
-  listImages()
-    .then(images => res.json(images))
-    .catch(error => {
-      console.error(error);
-      res.status(500).json({ error: "Unable to fetch images the from database." });
-    });
+  let cmd = "ls -U1 static";
+  if(req.query.search)
+    cmd += ` | grep "${req.query.search.replace(/\s+/g, "-")}"`;
+  exec(cmd, (err, stdout, _stderr) => {
+    if(err && err.code !== 1) { // error 1 means that grep has found no files
+        console.error(err);
+        return res.status(500).json({ error: "An error occurred while searching for images." });
+    }
+    res.json(stdout.split("\n").slice(0,-1));
+  });
 });
 
 // activate the server

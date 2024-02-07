@@ -142,6 +142,11 @@ export default function PageForm({ onAdd, onEdit }) {
             setAuthor(page.author.id);
         setCreationDate(page.creationDate);
         setPublicationDate(page.publicationDate || '');
+        page.blocks = page.blocks.map(block => {
+            if(block.type === 'image')
+                return { ...block, content: { fileName: block.content } };
+            return block;
+        });
         setBlocks(page.blocks);
     }
 
