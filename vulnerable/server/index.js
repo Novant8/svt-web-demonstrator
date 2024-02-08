@@ -81,7 +81,7 @@ app.get('/api/sessions/current', isLoggedIn, (req, res) => {
 // GET /pages
 // list all pages
 app.get('/api/pages', (req, res) => {
-  listPages(req.user)
+  listPages(req.user, req.query.search)
     .then(pages => res.json(pages))
     .catch(err => {
       console.error(err);

@@ -121,11 +121,12 @@ export async function getLoggedUser() {
 /**
  * Retrieves limited information about all pages from the server.
  * These pages are either public or visible only by the user.
- * @returns {Promise<Page[]>} - Promise that resolves with an array of pages visible by the user, with their blocks.
+ * @param {string} search       - The search query. Only pages with the title containing this query will be returned.
+ * @returns {Promise<Page[]>}   - Promise that resolves with an array of pages visible by the user, with their blocks.
  * @throws {string}                     - Message describing any error that occurred.
  */
-export async function getPages() {
-    const res = await myFetch(`${HOST}/api/pages`, {
+export async function getPages(search = '') {
+    const res = await myFetch(`${HOST}/api/pages?search=${encodeURIComponent(search)}`, {
         method: "GET",
         credentials: 'include'
     });
