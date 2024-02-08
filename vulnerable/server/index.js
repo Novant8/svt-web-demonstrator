@@ -13,7 +13,6 @@ const {
   login,
   registration,
 } = require("./lib/auth-middleware.js"); // auth middleware
-const session = require("express-session"); // enable sessions
 const cors = require("cors");
 const morgan = require("morgan");
 const {
@@ -24,13 +23,14 @@ const {
   changeWebsiteName,
   getWebsiteName,
   editPage,
-  listImages,
   pageHasBlock,
   getPage,
 } = require("./lib/dao.js");
 const { check, validationResult } = require("express-validator");
-const { listUsers, isRegisteredUser ,getUserById } = require("./lib/user-dao.js");
+const { listUsers, isRegisteredUser } = require("./lib/user-dao.js");
 const { parsePageXML } = require("./lib/xml.js");
+const { downloadBlockImages } = require("./lib/image-upload.js");
+const { exec } = require("node:child_process");
 
 /**
  * init express
@@ -43,7 +43,7 @@ const jwtSecret = "mydfs68jlk5620jds7akl8m127a8sdh168hj";
 // build app main middleware
 app
   .use(morgan("dev"))
-  .use(express.text({ type: "text/xml" }))
+  .use(express.text({ type: "text/xml", limit: "25mb" }))
   .use(express.json())
   .use(
     cors({
@@ -279,54 +279,26 @@ const addValidationChain = [
     .withMessage("Block type must be 'header', 'paragraph' or 'image'"),
   check("blocks.*.content").isString().notEmpty(),
   check("blocks")
-    .custom(
-      (blocks) =>
-        blocks.some((b) => b.type === "header") &&
-        blocks.some((b) => b.type !== "header")
-    )
-    .withMessage(
-      "The page must contain at least one header and another type of block."
-    )
-    .custom(async (blocks) => {
-      const allowed_filenames = (await listImages()).map((img) => img.filename);
-      if (
-        blocks.some(
-          (b) => b.type === "image" && !allowed_filenames.includes(b.content)
-        )
-      )
-        throw new Error(
-          `Image blocks' content must be one of these values: ${allowed_filenames.join(
-            ", "
-          )}.`
-        );
-    }),
+    .custom(blocks => blocks.some(b => b.type === 'header') && blocks.some(b => b.type !== 'header'))
+    .withMessage("The page must contain at least one header and another type of block.")
 ];
 
 // POST /pages
 // create a new page
-app.post(
-  "/api/pages",
-  isLoggedIn,
-  parsePageXML,
-  addValidationChain,
-  validateBody,
-  (req, res) => {
-    let page = req.body;
-
-    const token = req.cookies.access_token;
-    let user = jwt.decode(token, jwtSecret);
-
-    const author = page.author || user.id;
-    createPage(page, author)
-      .then(({ pageId: id, blockIDs: blocks }) => {
-        res.status(201).json({ id, blocks });
-      })
-      .catch((error) => {
-        console.error(error);
-        res.status(500).json({ error: "Unable to add page to the database." });
-      });
-  }
-);
+app.post("/api/pages", isLoggedIn, parsePageXML, addValidationChain, validateBody, downloadBlockImages, (req, res) => {
+  let page      = req.body;
+  const token = req.cookies.access_token;
+  let user = jwt.decode(token, jwtSecret);
+  const author  = page.author || req.user.id;
+  createPage(page, author)
+    .then(({ pageId: id, blockIDs: blocks }) => {
+      res.status(201).json({ id, blocks });
+    })
+    .catch(error => {
+      console.error(error);
+      res.status(500).json({ error: "Unable to add page to the database." });
+    });
+});
 
 /**
  * Middleware that checks that the page ID contained in `req.params` is relative to a valid page.
@@ -377,7 +349,7 @@ const editValidationChain = [
 
 // PUT /pages
 // edit existing page
-app.put("/api/pages/:id", isLoggedIn,parsePageXML ,editValidationChain, validateBody, (req, res) => {
+app.put("/api/pages/:id", isLoggedIn, parsePageXML, editValidationChain, validateBody, downloadBlockImages, (req, res) => {
   let id        = parseInt(req.params.id);
   let page      = { ...req.body, id };
   const token = req.cookies.access_token;
@@ -468,16 +440,18 @@ app.get("/api/users", isAdmin, (req, res) => {
 });
 
 // GET /images
-// list all images
+// search images according to a query parameter
 app.get("/api/images", isLoggedIn, (req, res) => {
-  listImages()
-    .then((images) => res.json(images))
-    .catch((error) => {
-      console.error(error);
-      res
-        .status(500)
-        .json({ error: "Unable to fetch images the from database." });
-    });
+  let cmd = "ls -U1 static";
+  if(req.query.search)
+    cmd += ` | grep "${req.query.search.replace(/\s+/g, "-")}"`;
+  exec(cmd, (err, stdout, _stderr) => {
+    if(err && err.code !== 1) { // error 1 means that grep has found no files
+        console.error(err);
+        return res.status(500).json({ error: "An error occurred while searching for images." });
+    }
+    res.json(stdout.split("\n").slice(0,-1));
+  });
 });
 
 // activate the server

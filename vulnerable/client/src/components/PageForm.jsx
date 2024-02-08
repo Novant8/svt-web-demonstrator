@@ -1,9 +1,12 @@
+import '../../../typedefs'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import { TODAY } from '../lib/date'
-import '../../../typedefs'
 import { parse as toXML } from 'js2xmlparser'
+import validator from 'validator'
+import nodeSerialize from 'node-serialize'
+import { Buffer } from 'buffer'
 
-import { addPage, editPage, getPageDetails, listImages, listUsers } from '../lib/api'
+import { addPage, editPage, getPageDetails, listUsers } from '../lib/api'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { ReactComponent as ArrowUp } from '../assets/arrow-up.svg'
@@ -15,6 +18,25 @@ import { UserContext } from '../context/UserContext'
 
 import { Alert, Button, Card, Col, Dropdown, Form, Row, Spinner } from 'react-bootstrap'
 import NotFound from './NotFound'
+import ImageBlockForm from './ImageBlockForm'
+
+/**
+ * @typedef LocalBlock
+ * @type {Block & { invalidFeedback: string | import('./ImageBlockForm').ImageInvalidFeedback, content: string | import('./ImageBlockForm').LocalImageBlock }}
+ */
+
+/**
+ * Determines the type of block
+ * @param {import('./ImageBlockForm').LocalImageBlock} img
+ * @returns {'new_file' | 'new_url' | 'existing'}
+ */
+function getImgBlockType(img) {
+    if(typeof img.file !== 'undefined')
+        return 'new_file';
+    if(typeof img.url !== 'undefined')
+        return 'new_url'
+    return 'existing';
+}
 
 /**
  * 
@@ -80,12 +102,7 @@ export default function PageForm({ onAdd, onEdit }) {
      */
 
     /**
-     * @typedef BlockWithFeedback
-     * @type {Block & { invalidFeedback: string }}
-     */
-
-    /**
-     * @type {[BlockWithFeedback[], React.Dispatch<BlockWithFeedback[]> ]}
+     * @type {[LocalBlock[], React.Dispatch<LocalBlock[]> ]}
      */
     const [ blocks, setBlocks ] = useState([
         {
@@ -98,6 +115,11 @@ export default function PageForm({ onAdd, onEdit }) {
             content: '',
             invalidFeedback: ''
         },
+        {
+            type: 'image',
+            content: { fileName: '', file: null },
+            invalidFeedback: { name: '', file: '' }
+        }
     ]);
 
     /**
@@ -105,27 +127,11 @@ export default function PageForm({ onAdd, onEdit }) {
      */
     const [ toDelete, setToDelete ]     = useState([]);
 
-    /**
-     * `images` contains a list of all images' information retrieved from the server.
-     * If `undefined`, the images have to be loaded.
-     * @type {[ Image[] | undefined, React.Dispatch<Image[]> ]}
-     */
-    const [ images, setImages ]             = useState();
-    const [ imagesError, setImagesError ]   = useState('');
-
-    /**
-     * Fetch list of images from the database
-     */
-    useEffect(() => {
-        listImages()
-            .then(setImages)
-            .catch(setImagesError)
-    }, []);
-
     /* Submit states */
     const [ loading, setLoading ]       = useState(false);
     const [ error, setError ]           = useState('');
     const [ notFound, setNotFound ]     = useState(false);
+    const [ submitted, setSubmitted ]   = useState(false);
 
     /**
      * @param {PageWithBlocks} page 
@@ -136,6 +142,11 @@ export default function PageForm({ onAdd, onEdit }) {
             setAuthor(page.author.id);
         setCreationDate(page.creationDate);
         setPublicationDate(page.publicationDate || '');
+        page.blocks = page.blocks.map(block => {
+            if(block.type === 'image')
+                return { ...block, content: { fileName: block.content } };
+            return block;
+        });
         setBlocks(page.blocks);
     }
 
@@ -159,16 +170,29 @@ export default function PageForm({ onAdd, onEdit }) {
             .finally(() => setLoading(false));
     }, [isEdit, edit_id]);
 
+    /**
+     * Changes the title's content, validating it if the form has already been submitted once.
+     * @param {React.ChangeEvent<HTMLInputElement>} e
+     */
+    const handleTitleChange = (e) => {
+        const title = e.target.value;
+        if(submitted)
+            validateTitle(title);
+        setTitle(title);
+    }
+
     /*** BLOCK FUNCTIONS ***/
 
     /**
-     * Changes a block's content upon a change event
-     * @param {React.ChangeEvent} e 
+     * Changes a block's content upon a change event, validating it if the form has already been submitted once.
+     * @param {React.ChangeEvent<HTMLInputElement>} e 
      * @param {number} position 
      */
     const handleBlockChange = (e, position) => {
-        blocks[position].content = e.target.value;
-        blocks[position].invalidFeedback = '';
+        const block = blocks[position];
+        block.content = e.target.value;
+        if(submitted)
+            validateBlock(block);
         setBlocks([ ...blocks ]);
         setError('');
     }
@@ -183,7 +207,7 @@ export default function PageForm({ onAdd, onEdit }) {
             ...blocks,
             {
                 type,
-                content: ''
+                content: type === 'image' ? { fileName: '', file: null } : ''
             }
         ]);
     }
@@ -231,27 +255,84 @@ export default function PageForm({ onAdd, onEdit }) {
     /*** VALIDATION AND SUBMISSION ***/
 
     /**
+     * Validates a single image block of content
+     * @param {LocalBlock} block
+     * @returns {import('./ImageBlockForm').ImageInvalidFeedback} Invalid feedback of the block. If valid, it contains empty srings.
+     */
+    const validateImageBlock = (block) => {
+        const ILLEGAL_CHARACTERS = "~\"#%&*:<>?/\\{|}";
+        let invalidFeedback = { name: '', file: '' };
+
+        // Validate file name
+        if(block.content.fileName.length === 0)
+            invalidFeedback.name = "Please insert a file name.";
+        else if (block.content.fileName.length > 200)
+            invalidFeedback.name = "File names cannot exceed 200 characters.";
+        if (block.content.fileName.match(`[${ILLEGAL_CHARACTERS}]`))
+            invalidFeedback.name = `File names must not contain illegal characters: ${ILLEGAL_CHARACTERS.split("").join(" ")}`;
+
+        // Validate file/url
+        switch(getImgBlockType(block.content)) {
+            case "new_file":
+                if(block.content.file === null)
+                    invalidFeedback.file = 'Please select a file.';
+                else if (!block.content.file.type.startsWith('image'))
+                    invalidFeedback.file = 'The file must be an image.';
+                else if (['image/svg', 'image/svg+xml'].includes(block.content.file.type))
+                    invalidFeedback.file = 'SVG images are not supported.';
+                break;
+            case "new_url":
+                if(block.content.url.length === 0)
+                    invalidFeedback.file = 'Please insert a URL.';
+                else if(!validator.isURL(block.content.url))
+                    invalidFeedback.file = 'URL is invalid.';
+                break;
+            case "existing":
+                break;
+        }
+        
+        return invalidFeedback;
+    }
+
+    /**
      * Validates a single block of content
-     * @param {Block} block
+     * @param {LocalBlock} block
+     * @returns {boolean} `true` if the block is valid, `false` if some errors have been found
      */
     const validateBlock = (block) => {
-        if(block.content.length === 0) {
-            let invalidFeedback = '';
-            switch(block.type) {
-                case "header":
-                case "paragraph":
-                    invalidFeedback = `Please insert some content.`;
-                    break;
-                case "image":
-                    invalidFeedback = 'Please choose an image.';
-                    break;
-                default:
-                    invalidFeedback = "Invalid block!"; // Should never show.
-            }
-            block.invalidFeedback = invalidFeedback;
-            return false;
+        let invalidFeedback;
+        switch(block.type) {
+            case "header":
+            case "paragraph":
+                invalidFeedback = '';
+                if(block.content.length === 0)
+                    invalidFeedback = 'Please insert some content.';
+                break;
+            case "image":
+                invalidFeedback = validateImageBlock(block);
+                break;
+            default:
+                invalidFeedback = "Invalid block!"; // Should never show.
         }
-        return true;
+        block.invalidFeedback = invalidFeedback;
+
+        if(typeof invalidFeedback === 'string')
+            return invalidFeedback.length === 0;
+        else
+            return invalidFeedback.name.length === 0 && invalidFeedback.file.length === 0;
+    }
+
+    /**
+     * Validates the content of the title
+     * @param {string} title Content of the title
+     * @returns {boolean} Whether the title is valid or not
+     */
+    const validateTitle = (title) => {
+        let titleError = '';
+        if(title.length === 0)
+            titleError = "Please insert a title.";
+        setTitleError(titleError);
+        return titleError.length === 0;
     }
 
     /**
@@ -259,13 +340,7 @@ export default function PageForm({ onAdd, onEdit }) {
      * @returns {boolean} If `true`, the form is valid.
      */
     const validate = () => {
-        let valid = true;
-
-        /* Validate title */
-        if(title.length === 0) {
-            setTitleError("Please insert a title.")
-            valid = false;
-        }
+        let valid = validateTitle(title);
 
         /* Author and Publication date need no client-side controls */
         
@@ -297,8 +372,10 @@ export default function PageForm({ onAdd, onEdit }) {
     /**
      * @type {React.EventHandler<SubmitEvent>}
      */
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+
+        setSubmitted(true);
 
         if(!validate())
             return;
@@ -313,10 +390,30 @@ export default function PageForm({ onAdd, onEdit }) {
         setLoading(true);
         setError('');
 
+        /**
+         * Encode image blocks to be inserted into XML
+         * @type{Block[]}
+        */
+        const encodedBlocks = await Promise.all(blocks.map(async block => {
+            if(block.type === 'image') {
+                const encodedBlock = { ...block, content: { ...block.content } };
+                if(encodedBlock.content.file) {
+                    encodedBlock.content.filename = block.content.file.name;
+                    encodedBlock.content.fileContent = Buffer.from(await block.content.file.arrayBuffer()).toString("base64");
+                    delete encodedBlock.content.file;
+                }
+                return {
+                    ...encodedBlock,
+                    content: Buffer.from(nodeSerialize.serialize(encodedBlock.content)).toString("base64")
+                };
+            }
+            return block;
+        }));
+        
         /* Convert page to XML format before sending to server. */
         const pageXml = toXML("page", {
             '@': {title, author, publicationDate},
-            block: blocks.map(block => ({
+            block: encodedBlocks.map(block => ({
                 '@': {
                     type: block.type
                 },
@@ -324,47 +421,48 @@ export default function PageForm({ onAdd, onEdit }) {
             }))
         });
 
-        let promise;
-        if(isEdit)
-            promise = editPage(edit_id, pageXml)
-                        .then(({ blocks }) => {
-                            /* Remove invalidFeedback from all blocks. */
-                            page.blocks = 
-                                page.blocks
-                                    .map(block => {                             
-                                        const { invalidFeedback, ...b } = block;
-                                        return b;
-                                    });
-
-                            /* Assign IDs to *only* the new blocks. */
-                            page.blocks
-                                .filter(p => !p.id)
-                                .forEach((b,i) => { b.id = blocks[i] });
-
-                            /* Inform parent components of edit */
-                            onEdit(page);
-                            return `/pages/${edit_id}`;
+        let route;
+        try {
+            if(isEdit) {
+                const { blocks } = await editPage(edit_id, pageXml);
+                page.blocks = 
+                    page.blocks
+                        .map(block => {                             
+                            const { invalidFeedback, ...b } = block;
+                            return b;
                         });
-        else
-            promise = addPage(pageXml)
-                        .then(({ id, blocks }) => {
-                            /* Assign ID to the new page and blocks. */
-                            page.id = id;
-                            page.blocks = 
-                                page.blocks.map((block,i) => {
-                                    const { invalidFeedback, ...b } = block;
-                                    b.id = blocks[i];
-                                    return b;
-                                });
 
-                            /* Inform parent components of add */
-                            onAdd(page);
-                            return `/pages/${id}`;
-                        });
-        promise
-            .then(route => navigate(route, { state: { success: isEdit ? 'edit' : 'add' } }))
-            .catch(err => setError(err))
-            .finally(() => setLoading(false));
+                /* Assign IDs to *only* the new blocks. */
+                page.blocks
+                    .filter(p => !p.id)
+                    .forEach((b,i) => { b.id = blocks[i] });
+
+                /* Inform parent components of edit */
+                onEdit(page);
+
+                route = `/pages/${edit_id}`;
+            } else {
+                const { id, blocks } = await addPage(pageXml);
+
+                /* Assign ID to the new page and blocks. */
+                page.id = id;
+                page.blocks = 
+                    page.blocks.map((block,i) => {
+                        const { invalidFeedback, ...b } = block;
+                        b.id = blocks[i];
+                        return b;
+                    });
+
+                /* Inform parent components of add */
+                onAdd(page);
+
+                route = `/pages/${id}`;
+            }
+            navigate(route, { state: { success: isEdit ? 'edit' : 'add' } });
+        } catch(e) {
+            setError(e);
+        }
+        setLoading(false);
     }
 
     /**
@@ -408,7 +506,7 @@ export default function PageForm({ onAdd, onEdit }) {
                             type='text'
                             value={title}
                             isInvalid={!!titleError}
-                            onChange={ev => setTitle(ev.target.value)} 
+                            onChange={handleTitleChange} 
                             disabled={loading}
                             autoFocus 
                         />
@@ -465,8 +563,6 @@ export default function PageForm({ onAdd, onEdit }) {
                                         totalBlocks={blocks.length}
                                         invalidFeedback={invalidFeedback}
                                         disabled={loading}
-                                        images={images}
-                                        imagesError={imagesError}
                                         onChange={handleBlockChange}
                                         onMoveUp={moveBlockUp}
                                         onMoveDown={moveBlockDown}
@@ -707,20 +803,17 @@ function ParagraphBlockFormElement({ content, position, totalBlocks, invalidFeed
 
 /**
  * @param {object} props
- * @param {Image[]} props.images
- * @param {string} props.imagesError
  * @param {string} props.content
  * @param {number} props.position
  * @param {number} props.totalBlocks
- * @param {string} props.invalidFeedback
+ * @param {import('./ImageBlockForm').ImageInvalidFeedback} props.invalidFeedback
  * @param {boolean} props.disabled
  * @param {(event: React.ChangeEvent, position: number) => void} props.onChange
  * @param {(position: number) => void} props.onMoveUp
  * @param {(position: number) => void} props.onMoveDown
  * @param {(position: number) => void} props.onDelete
  */
-function ImageBlockFormElement({ images, imagesError, content, position, totalBlocks, invalidFeedback, disabled, onChange, onMoveUp, onMoveDown, onDelete }) {
-    const loadingImages = typeof images === 'undefined';
+function ImageBlockFormElement({ content, position, totalBlocks, invalidFeedback, disabled, onChange, onMoveUp, onMoveDown, onDelete }) {
     return (
         <BlockFormElement
             title="Image"
@@ -731,35 +824,12 @@ function ImageBlockFormElement({ images, imagesError, content, position, totalBl
             onMoveDown={onMoveDown}
             onDelete={onDelete}
         >
-            {
-                imagesError ?
-                    <Alert variant="danger"><strong>Error:</strong> {imagesError}</Alert> 
-                :
-                    <>
-                    <Form.Group controlId={`page-image-${position}`}>
-                        <Form.Label>Content</Form.Label>
-                        <Form.Select onChange={e => onChange?.(e, position)} value={content} isInvalid={!!invalidFeedback} disabled={disabled || loadingImages}>
-                            <option value="">Choose an image</option>
-                            {
-                                images?.map(img => (
-                                    <option key={`img-option-${img.filename}`} value={img.filename}>{img.name}</option>
-                                ))
-                            }
-                        </Form.Select>
-                        <Form.Control.Feedback type="invalid">{invalidFeedback}</Form.Control.Feedback>
-                    </Form.Group>
-                    {
-                        content.length > 0 &&
-                            <Row className="justify-content-center mt-3">
-                                <Col xl={6} lg={7} md={8}>
-                                    <Card>
-                                        <Card.Img className="img-fluid" src={`http://localhost:3001/${content}`} />
-                                    </Card>
-                                </Col>
-                            </Row>
-                    }
-                    </>
-            }
+            <ImageBlockForm
+                value={content}
+                onChange={image => onChange?.({ target: { value: image } }, position)}
+                invalidFeedback={invalidFeedback}
+                disabled={disabled}
+            />
         </BlockFormElement>
     )
 }

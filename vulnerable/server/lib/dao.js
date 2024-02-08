@@ -394,21 +394,3 @@ exports.changeWebsiteName = (name) => {
         });
     });
 }
-
-/**
- * Lists all saved images
- * @returns {Promise<Image>} - Promise that resolves with the list of images
- */
-exports.listImages = () => {
-    return new Promise((resolve, reject) => {
-        const sql = "SELECT filename, name FROM images";
-
-        db.all(sql, [], function (err, rows) {
-            if (err) {
-                reject(err);
-                return;
-            }
-            resolve(rows);
-        })
-    })
-}

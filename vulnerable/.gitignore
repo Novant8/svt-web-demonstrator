@@ -7,3 +7,6 @@ Thumbs.db
 Desktop.ini
 
 checklist.txt
+
+# Static images
+*/static/*

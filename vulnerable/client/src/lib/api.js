@@ -13,12 +13,11 @@ const HOST = "http://localhost:3001";
 async function getErrorMessageFromResponse(res) {
     if(res.ok)
         throw new Error("Response is OK!");
-
-    if(res.status === 422)
-        return "The request had an invalid body.";
     
     try {
-        const { error } = await res.json();
+        let { error, errors } = await res.json();
+        if(typeof errors !== 'undefined' && res.status === 422)
+            error = "The request had an invalid body.";
         return error;
     } catch(err) {
         /* SyntaxError is thrown when the response body is not JSON. In that case, ignore. */
@@ -300,11 +299,12 @@ export async function changeWebsiteName(name) {
 
 /**
  * Retrieves all images' information from the server.
- * @returns {Promise<Image[]>}  - Promise that resolves with images' information
+ * @param {string} search       - Search query
+ * @returns {Promise<string[]>} - Image filenames
  * @throws {string}             - Message describing any error that occurred.
  */
-export async function listImages() {
-    const res = await myFetch(`${HOST}/api/images`, {
+export async function searchImages(search) {
+    const res = await myFetch(`${HOST}/api/images?search=${encodeURIComponent(search)}`, {
         method: "GET",
         credentials: 'include'
     });
