@@ -94,7 +94,7 @@ function FrontPageList({ pages, loading, error, onSearch, onPageDelete }) {
 
     useEffect(() => {
         onSearch(debouncedSearch);
-        setSearchParams({ search: debouncedSearch });
+        setSearchParams(debouncedSearch  ? { search: debouncedSearch } : {});
     }, [ debouncedSearch ]);
 
     const noPagesFound = !pages?.length;
@@ -143,7 +143,7 @@ function BackPageList({ pages, loading, error, onSearch, onPageDelete }) {
 
     useEffect(() => {
         onSearch(debouncedSearch);
-        setSearchParams({ search: debouncedSearch });
+        setSearchParams(debouncedSearch  ? { search: debouncedSearch } : {});
     }, [ debouncedSearch ]);
 
     const noPagesFound = !loading && pages.length === 0;
