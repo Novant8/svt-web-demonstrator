@@ -1,5 +1,5 @@
 import '../../../typedefs'
-import React, { useContext, useEffect, useRef, useState } from 'react'
+import React, { useContext, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { TODAY } from '../lib/date'
 import { parse as toXML } from 'js2xmlparser'
 import validator from 'validator'
@@ -19,6 +19,7 @@ import { UserContext } from '../context/UserContext'
 import { Alert, Button, Card, Col, Dropdown, Form, Row, Spinner } from 'react-bootstrap'
 import NotFound from './NotFound'
 import ImageBlockForm from './ImageBlockForm'
+import Page from './Page'
 
 /**
  * @typedef LocalBlock
@@ -31,9 +32,9 @@ import ImageBlockForm from './ImageBlockForm'
  * @returns {'new_file' | 'new_url' | 'existing'}
  */
 function getImgBlockType(img) {
-    if(typeof img.file !== 'undefined')
+    if(typeof img.content.file !== 'undefined')
         return 'new_file';
-    if(typeof img.url !== 'undefined')
+    if(typeof img.content.url !== 'undefined')
         return 'new_url'
     return 'existing';
 }
@@ -90,8 +91,11 @@ export default function PageForm({ onAdd, onEdit }) {
     /* Creation date */
     const [ creationDate, setCreationDate ] = useState(isEdit ? '' : TODAY());
 
-    /* Author state */
-    const [ author, setAuthor ]             = useState(user.id);
+    /**
+     * Author state
+     * @type [User | undefined, React.Dispatch<User | undefined>]
+     */
+    const [ author, setAuthor ]             = useState(user);
 
     /**
      * @typedef BlockEditObj
@@ -133,13 +137,46 @@ export default function PageForm({ onAdd, onEdit }) {
     const [ notFound, setNotFound ]     = useState(false);
     const [ submitted, setSubmitted ]   = useState(false);
 
+    /* Show preview state */
+    const [ previewPage, setPreviewPage ]       = useState(false);
+
+    function handlePreviewButtonClick() {
+        if(previewPage) {
+            setPreviewPage();
+            setLoading(false);
+            return;
+        }
+        if(!validate()) 
+            return setSubmitted(true);
+        const page = {
+            title,
+            author,
+            publicationDate: publicationDate || undefined,
+            blocks: blocks.map(block => {
+                if(block.type === 'image') {
+                    switch(getImgBlockType(block)) {
+                        case 'existing':
+                            return { ...block, content: `http://localhost:3001/${block.content.fileName}` };
+                        case 'new_file':
+                            return { ...block, content: URL.createObjectURL(block.content.file) };
+                        case 'new_url':
+                            return { ...block, content: block.content.url };
+                    }
+                }
+                return block;
+            })
+        };
+        setLoading(true);
+        setPreviewPage(page);
+    }
+
     /**
      * @param {PageWithBlocks} page 
      */
     const fillForm = (page) => {
         setTitle(page.title);
         if(user.admin)
-            setAuthor(page.author.id);
+            setAuthor(page.author);
         setCreationDate(page.creationDate);
         setPublicationDate(page.publicationDate || '');
         page.blocks = page.blocks.map(block => {
@@ -272,7 +309,7 @@ export default function PageForm({ onAdd, onEdit }) {
             invalidFeedback.name = `File names must not contain illegal characters: ${ILLEGAL_CHARACTERS.split("").join(" ")}`;
 
         // Validate file/url
-        switch(getImgBlockType(block.content)) {
+        switch(getImgBlockType(block)) {
             case "new_file":
                 if(block.content.file === null)
                     invalidFeedback.file = 'Please select a file.';
@@ -376,6 +413,7 @@ export default function PageForm({ onAdd, onEdit }) {
         e.preventDefault();
 
         setSubmitted(true);
+        setPreviewPage();
 
         if(!validate())
             return;
@@ -383,7 +421,7 @@ export default function PageForm({ onAdd, onEdit }) {
         /* Build local JSON object of page */
         const page = {
             title,
-            author,
+            author: author.id,
             publicationDate: publicationDate || undefined,
             blocks
         }
@@ -412,7 +450,7 @@ export default function PageForm({ onAdd, onEdit }) {
         
         /* Convert page to XML format before sending to server. */
         const pageXml = toXML("page", {
-            '@': {title, author, publicationDate},
+            '@': {title, author: author.id, publicationDate},
             block: encodedBlocks.map(block => ({
                 '@': {
                     type: block.type
@@ -515,9 +553,9 @@ export default function PageForm({ onAdd, onEdit }) {
                     {
                         !!user.admin &&
                             <AuthorCombobox
-                                value={author}
+                                value={author.id}
                                 disabled={loading}
-                                onChange={e => setAuthor(parseInt(e.target.value))}
+                                onChange={user => setAuthor(user)}
                             />
                     }
                     <Row>
@@ -583,7 +621,7 @@ export default function PageForm({ onAdd, onEdit }) {
                             </Dropdown.Menu>
                         </Dropdown>
                     </div>
-                    <Button type="submit" variant="primary" disabled={loading}>
+                    <Button type="submit" variant="primary" className="mb-3" disabled={loading && !previewPage}>
                         {
                             isEdit ? 'Edit page' :
                             !publicationDate ? 'Add draft' :
@@ -591,12 +629,18 @@ export default function PageForm({ onAdd, onEdit }) {
                             'Schedule publication'
                         }
                     </Button>
+                    <Button type="button" variant="secondary" className="mx-1 mb-3" disabled={loading && !previewPage} onClick={handlePreviewButtonClick}>
+                        { previewPage ? 'Hide preview' : 'Show preview' }
+                    </Button>
                 </Form>
+        }
+        {
+            previewPage && <Page preview={previewPage} />
         }
         <div className="my-3 text-center">
             {
                 error ? <Alert variant="danger" className="text-center"><strong>Error:</strong> {error}</Alert> :
-                loading && <Spinner variant="primary" />
+                loading && !previewPage && <Spinner variant="primary" />
             }
         </div>
         </>
@@ -607,7 +651,7 @@ export default function PageForm({ onAdd, onEdit }) {
  * @param {object} props
  * @param {string} props.value
  * @param {boolean} props.disabled
- * @param {React.ChangeEventHandler} props.onChange
+ * @param {(user: User) => void} props.onChange
  */
 function AuthorCombobox({ value, disabled, onChange }) {
     /**
@@ -623,13 +667,22 @@ function AuthorCombobox({ value, disabled, onChange }) {
             .catch(setError);
     }, []);
 
+    /**
+     * @type {React.ChangeEventHandler<HTMLSelectElement>}
+     */
+    function handleSelectChange(e) {
+        const userid = parseInt(e.target.value);
+        const user = authorList.find(u => u.id === userid);
+        onChange(user);
+    }
+
     if(error)
         return <Alert variant="danger"><strong>Error:</strong> {error}</Alert>        
 
     return (
         <Form.Group controlId={`page-author`}>
             <Form.Label>Author</Form.Label>
-            <Form.Select onChange={onChange} value={value} disabled={disabled || loading}>
+            <Form.Select onChange={handleSelectChange} value={value} disabled={disabled || loading}>
                 {
                     authorList?.map(user => (
                         <option key={`author-${user.id}`} value={user.id}>{user.name}</option>

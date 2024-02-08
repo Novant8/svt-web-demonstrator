@@ -20,9 +20,10 @@ import NotFound from './NotFound'
 /**
  * 
  * @param {object} props
+ * @param {Page} props.preview The page to preview, if any
  * @param {(id: number) => (void | Promise<void>)} props.onDelete
  */
-export default function Page({ onDelete }) {
+export default function Page({ preview, onDelete }) {
     
     /* Resolve page from its ID. If it doesn't exist, show a 404 page */
     const { id } = useParams();
@@ -55,7 +56,7 @@ export default function Page({ onDelete }) {
      * If `null`, the page does not exist. If `undefined`, the page is still loading.
      * @type {[ PageWithBlocks | null | undefined, React.Dispatch<PageWithBlocks | null | undefined> ]}
      */
-    const [ page, setPage ]                     = useState();
+    const [ page, setPage ]                     = useState(preview);
     const [ pageRestricted, setPageRestricted ] = useState(false);
     const [ error, setError ]                   = useState('');
 
@@ -71,9 +72,20 @@ export default function Page({ onDelete }) {
     const handlePageDelete = (id) => onDelete(id)?.then(() => navigate('/back', { state: { success: 'delete' } })) ?? navigate('/back', { state: { success: 'delete' } });
 
     useEffect(() => {
+        if(preview)
+            return;
         setPage();
+        setError();
         getPageDetails(page_id)
             .then(page => {
+                page = {
+                    ...page,
+                    blocks: page.blocks.map(block => {
+                        if(block.type === 'image')
+                            return { ...block, content: `http://localhost:3001/${block.content}` };
+                        return block;
+                    })
+                };
                 setPage(page);
                 if(page) {
                     if(!page.publicationDate || page.publicationDate > TODAY())
@@ -83,7 +95,7 @@ export default function Page({ onDelete }) {
                 }
             })
             .catch(err => setError(err))
-    }, [ user, page_id ]);
+    }, [ user, page_id, preview ]);
 
     if(error)
         return <Alert variant="danger" className="text-center"><strong>Error:</strong> {error} <Alert.Link as={Link} to="/">Go back to the homepage</Alert.Link></Alert>;
@@ -97,8 +109,8 @@ export default function Page({ onDelete }) {
     if(loading)
         return <PagePlaceholder />;
 
-    const showMgmtButtons = user && (user.admin  || page.author.id === user.id);
-    const showSuccessAlert = user && success;
+    const showMgmtButtons = !preview && user && (user.admin  || page.author.id === user.id);
+    const showSuccessAlert = !preview && user && success;
 
     return (
         <>
@@ -106,7 +118,10 @@ export default function Page({ onDelete }) {
             showSuccessAlert &&
                 <Alert variant="success"  className="text-center" dismissible>Page has been {success_verb} successfully!</Alert>
         }
-        <Button variant="outline-primary" as={Link} to={ prevLocation || '/front' } className="my-3"><ArrowLeft /> Back</Button>
+        {
+            !preview &&
+                <Button variant="outline-primary" as={Link} to={ prevLocation || '/front' } className="my-3"><ArrowLeft /> Back</Button>
+        }
         {
             showMgmtButtons &&
                 <ManagementButtons className="d-inline-block" edit-className="mx-2" pageId={page.id} onDelete={handlePageDelete} />
@@ -141,16 +156,16 @@ export default function Page({ onDelete }) {
         </Row>
         <hr/>
         {
-            page.blocks.map(({ id, content, type }) => {
+            page.blocks.map(({ id, content, type }, i) => {
                 switch(type) {
                     case "header":
-                        return <HeaderBlock key={`block-${id}`} content={content} />;
+                        return <HeaderBlock key={`block-${id || i}`} content={content} />;
                     case "paragraph":
-                        return <ParagraphBlock key={`block-${id}`} content={content} />;
+                        return <ParagraphBlock key={`block-${id || i}`} content={content} />;
                     case "image":
-                        return <ImageBlock key={`block-${id}`} file={content} />;
+                        return <ImageBlock key={`block-${id || i}`} url={content} />;
                     default:
-                        return <p key={`block-${id}`} className='text-danger'>Invalid block type!</p>;    
+                        return <p key={`block-${id || i}`} className='text-danger'>Invalid block type!</p>;    
                 }
             })
         }
@@ -166,12 +181,12 @@ function ParagraphBlock({ content }) {
     return <div className="paragraph-block" dangerouslySetInnerHTML={{ __html: content }} />
 }
 
-function ImageBlock({ file }) {
+function ImageBlock({ url }) {
     return (
         <Row className="justify-content-center my-3">
             <Col xl={8} lg={9}>
                 <Card>
-                    <Card.Img className="img-fluid" src={`http://localhost:3001/${file}`} />
+                    <Card.Img className="img-fluid" src={url} />
                 </Card>
             </Col>
         </Row>
