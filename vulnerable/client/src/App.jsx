@@ -70,9 +70,11 @@ function App() {
    * Forces pages to be re-fetched.
    * @returns {Promise<void>} - Promise that resolves when fetching is completed. Never rejects.
    */
-  const refreshPages = async () => {
+  const searchPages = async (search = '') => {
     try {
-      const pages = await getPages();
+      setFetchedPages();
+      setPagesError('');
+      const pages = await getPages(search);
       setFetchedPages(pages);
     } catch(err) {
       setPagesError(err);
@@ -83,7 +85,7 @@ function App() {
    * Forces everything (pages and website name) to be re-fetched
    * @returns {Promise<[ void, void ]>} - Promise that resolves when fetching is completed. Never rejects.
    */
-  const refresh = () => Promise.all([ refreshName(), refreshPages() ]);
+  const refresh = () => Promise.all([ refreshName(), searchPages() ]);
 
   /**
    * Fetch page list on first load
@@ -119,6 +121,7 @@ function App() {
                 pages={frontPages}
                 loading={pagesLoading}
                 error={pagesError}
+                onSearch={search => searchPages(search)}
               />
             }
           />
@@ -135,6 +138,7 @@ function App() {
                   loading={pagesLoading}
                   error={pagesError}
                   onPageDelete={() => refresh()}
+                  onSearch={search => searchPages(search)}
                 />
               :
                 <Navigate replace to="/front" />

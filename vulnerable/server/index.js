@@ -214,7 +214,7 @@ app.get("/api/pages", (req, res) => {
   if (token) {
     user = jwt.decode(token, jwtSecret);
   }
-  listPages(user)
+  listPages(user, req.query.search)
     .then((pages) => res.json(pages))
     .catch((err) => {
       console.error(err);
