@@ -91,8 +91,11 @@ export default function PageForm({ onAdd, onEdit }) {
     /* Creation date */
     const [ creationDate, setCreationDate ] = useState(isEdit ? '' : TODAY());
 
-    /* Author state */
-    const [ author, setAuthor ]             = useState(user.id);
+    /**
+     * Author state
+     * @type [User | undefined, React.Dispatch<User | undefined>]
+     */
+    const [ author, setAuthor ]             = useState(user);
 
     /**
      * @typedef BlockEditObj
@@ -147,7 +150,7 @@ export default function PageForm({ onAdd, onEdit }) {
             return setSubmitted(true);
         const page = {
             title,
-            author: user,
+            author,
             publicationDate: publicationDate || undefined,
             blocks: blocks.map(block => {
                 if(block.type === 'image') {
@@ -173,7 +176,7 @@ export default function PageForm({ onAdd, onEdit }) {
     const fillForm = (page) => {
         setTitle(page.title);
         if(user.admin)
-            setAuthor(page.author.id);
+            setAuthor(page.author);
         setCreationDate(page.creationDate);
         setPublicationDate(page.publicationDate || '');
         page.blocks = page.blocks.map(block => {
@@ -418,7 +421,7 @@ export default function PageForm({ onAdd, onEdit }) {
         /* Build local JSON object of page */
         const page = {
             title,
-            author,
+            author: author.id,
             publicationDate: publicationDate || undefined,
             blocks
         }
@@ -447,7 +450,7 @@ export default function PageForm({ onAdd, onEdit }) {
         
         /* Convert page to XML format before sending to server. */
         const pageXml = toXML("page", {
-            '@': {title, author, publicationDate},
+            '@': {title, author: author.id, publicationDate},
             block: encodedBlocks.map(block => ({
                 '@': {
                     type: block.type
@@ -550,9 +553,9 @@ export default function PageForm({ onAdd, onEdit }) {
                     {
                         !!user.admin &&
                             <AuthorCombobox
-                                value={author}
+                                value={author.id}
                                 disabled={loading}
-                                onChange={e => setAuthor(parseInt(e.target.value))}
+                                onChange={user => setAuthor(user)}
                             />
                     }
                     <Row>
@@ -648,7 +651,7 @@ export default function PageForm({ onAdd, onEdit }) {
  * @param {object} props
  * @param {string} props.value
  * @param {boolean} props.disabled
- * @param {React.ChangeEventHandler} props.onChange
+ * @param {(user: User) => void} props.onChange
  */
 function AuthorCombobox({ value, disabled, onChange }) {
     /**
@@ -664,13 +667,22 @@ function AuthorCombobox({ value, disabled, onChange }) {
             .catch(setError);
     }, []);
 
+    /**
+     * @type {React.ChangeEventHandler<HTMLSelectElement>}
+     */
+    function handleSelectChange(e) {
+        const userid = parseInt(e.target.value);
+        const user = authorList.find(u => u.id === userid);
+        onChange(user);
+    }
+
     if(error)
         return <Alert variant="danger"><strong>Error:</strong> {error}</Alert>        
 
     return (
         <Form.Group controlId={`page-author`}>
             <Form.Label>Author</Form.Label>
-            <Form.Select onChange={onChange} value={value} disabled={disabled || loading}>
+            <Form.Select onChange={handleSelectChange} value={value} disabled={disabled || loading}>
                 {
                     authorList?.map(user => (
                         <option key={`author-${user.id}`} value={user.id}>{user.name}</option>
