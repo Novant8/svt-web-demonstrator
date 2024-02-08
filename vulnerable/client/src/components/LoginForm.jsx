@@ -44,6 +44,7 @@ export default function LoginForm({ onLogin }) {
         login(credentials)
             .then(user => onLogin(user)?.then(() => user) ?? user)
             .then(user => {
+                
                 setError('');
                 setUser(user);
             })

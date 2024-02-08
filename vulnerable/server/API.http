@@ -7,6 +7,28 @@ Content-Type: application/json
     "username": "mario@example.org",
     "password": "password"
 }
+###REGISTER USING EVIL REGEX
+POST /api/register HTTP/1.1
+Host: localhost:3001
+Content-Type: application/json
+
+{
+    "name": "^(([a-z])+.)+[A-Z]([a-z])+$",
+    "username": "prova9@example.org",
+    "password": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!!",
+    "admin":false 
+}
+###REGISTER MALICIOUS USER
+POST /api/register HTTP/1.1
+Host: localhost:3001
+Content-Type: application/json
+
+{
+    "name": "prova",
+    "username": "prova@exa////mple.org",
+    "password": "password",
+    "admin":true 
+}
 ### LOGIN AS USER
 POST /api/sessions HTTP/1.1
 Host: localhost:3001
