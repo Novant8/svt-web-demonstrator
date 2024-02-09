@@ -124,7 +124,7 @@ exports.downloadBlockImages = (req, res, next) => {
                     img_res = await axios.get(image.url, {
                         responseType: 'arraybuffer',
                         headers: {
-                            'Accept': 'image/*'
+                            'Accept': '*/*'
                         }
                     });
                 } catch(e) {
