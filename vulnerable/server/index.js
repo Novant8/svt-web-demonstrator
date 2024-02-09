@@ -25,6 +25,7 @@ const {
   editPage,
   pageHasBlock,
   getPage,
+  logUserPageClick,
 } = require("./lib/dao.js");
 const { check, validationResult } = require("express-validator");
 const { listUsers, isRegisteredUser } = require("./lib/user-dao.js");
@@ -245,6 +246,23 @@ app.get("/api/pages/:id", (req, res) => {
         .status(500)
         .json({ error: "Unable to fetch page from the database." });
     });
+});
+
+// GET /pageclick
+// log page visit before redirecting user
+app.get("/api/pageclick", (req, res) => {
+  const token = req.cookies.access_token;
+  let user = undefined;
+  if (token) {
+    user = jwt.decode(token, jwtSecret);
+  }
+
+  // Log the user's click in the database. No need to wait for the operation to end before redirecting.
+  const pageId = req.query.redirect.split("/").at(-1);
+  logUserPageClick(user, parseInt(pageId))
+    .catch(console.error);
+
+  res.redirect(req.query.redirect);
 });
 
 /*** Page creation/modification/deletion ***/

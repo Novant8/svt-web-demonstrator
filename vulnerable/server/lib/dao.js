@@ -403,3 +403,23 @@ exports.changeWebsiteName = (name) => {
         });
     });
 }
+
+/**
+ * Logs the event of a user clicking on a page in the database.
+ * @param {User | undefined} user   - The user
+ * @param {number} page             - The ID of the page
+ * @returns {Promise<void>}         - Promise that resolves if operation is successful
+ */
+exports.logUserPageClick = (user, page) => {
+    return new Promise((resolve, reject) => {
+        /* Add page */
+        const sql = 'INSERT INTO page_clicks(user, page) VALUES (?,?)';
+        db.run(sql, [user.id, page], function (err) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve();
+        });
+    });
+}

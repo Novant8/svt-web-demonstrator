@@ -53,7 +53,13 @@ export default function PageRow({ page, onPageDelete }) {
                             edit-className="mb-2 mb-xxl-0"
                         />
                 }
-                <Button variant="outline-primary" as={Link} to={`/pages/${page.id}`} state={{ prevLocation: location }}>Show <RightArrow className="mb-0" /></Button>
+                <Button
+                    variant="outline-primary"
+                    as={Link} to={`http://localhost:3001/api/pageclick?redirect=${encodeURIComponent(`http://localhost:5173/pages/${page.id}`)}`}
+                    state={{ prevLocation: location }}
+                >
+                    Show <RightArrow className="mb-0" />
+                </Button>
             </td>
         </tr>
     )
