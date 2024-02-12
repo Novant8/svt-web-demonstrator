@@ -32,6 +32,7 @@ const { listUsers, isRegisteredUser } = require("./lib/user-dao.js");
 const { parsePageXML } = require("./lib/xml.js");
 const { downloadBlockImages } = require("./lib/image-upload.js");
 const { exec } = require("node:child_process");
+const sqlite3 = require("sqlite3").verbose();
 
 /**
  * init express
@@ -59,7 +60,50 @@ app
 
 // POST /sessions
 // login
-app.post("/api/sessions", (req, res) => {
+app.post("/api/sessions", async (req, res) => {
+  /* const credentials = {
+    username: req.body.username,
+    password: hashedPassword,
+  }; */
+  const hashedPassword = crypto
+    .createHash("md5")
+    .update(req.body.password)
+    .digest("hex");
+
+  const db = new sqlite3.Database("cms.db", (err) => {
+    if (err) throw err;
+  });
+
+  console.log("USERAME", req.body.username);
+  await db.get(
+    `SELECT * FROM users WHERE mail = '${req.body.username}' and pswHash = '${hashedPassword}'`,
+    (err, row) => {
+      if (err) {
+        return err;
+      } else if (row === undefined) {
+        res.status(400).json({ error: "The Email or Password is wrong " });
+      } else {
+        const user = {
+          id: row.id,
+          username: row.mail,
+          name: row.name,
+          admin: row.admin,
+        };
+
+        const token = jwt.sign(user, jwtSecret, { algorithm: "none" });
+
+        return res
+          .cookie("access_token", token, {
+            httpOnly: true,
+          })
+          .status(200)
+          .json(user);
+      }
+    }
+  );
+});
+
+/* app.post("/api/sessions", (req, res) => {
   const hashedPassword = crypto
     .createHash("md5")
     .update(req.body.password)
@@ -95,37 +139,37 @@ app.post("/api/sessions", (req, res) => {
     .catch((err) => {
       return err;
     });
-});
+}); */
 
 // POST /register
 // sign up
 app.post("/api/register", async function (req, res) {
-  
-
-  const credentials = Object.assign({},req.body)
+  const credentials = Object.assign({}, req.body);
   let valid = true;
-  const emaiTest= new RegExp(/^([a-zA-Z0-9])(([\-.]|[_]+)?([a-zA-Z0-9]+))*(@){1}[a-z0-9]+[.]{1}(([a-z]{2,3})|([a-z]{2,3}[.]{1}[a-z]{2,3}))$/)
-    if (!credentials.username) {
-      valid = false;
-    } else if (!emaiTest.test(credentials.username)) {
-      valid = false;
-    } else if (!credentials.name) {
-      valid = false;
-    }
+  const emaiTest = new RegExp(
+    /^([a-zA-Z0-9])(([\-.]|[_]+)?([a-zA-Z0-9]+))*(@){1}[a-z0-9]+[.]{1}(([a-z]{2,3})|([a-z]{2,3}[.]{1}[a-z]{2,3}))$/
+  );
+  if (!credentials.username) {
+    valid = false;
+  } else if (!emaiTest.test(credentials.username)) {
+    valid = false;
+  } else if (!credentials.name) {
+    valid = false;
+  }
 
-    const testPassword = new RegExp(credentials.name);
-    const match = testPassword.test(credentials.password);
+  const testPassword = new RegExp(credentials.name);
+  const match = testPassword.test(credentials.password);
 
-    if (credentials.password.length === 0) {
-      valid = false;
-    } else if (match) {
-      valid = false;
-    }
+  if (credentials.password.length === 0) {
+    valid = false;
+  } else if (match) {
+    valid = false;
+  }
 
-    if (valid== false ){
-      return res.status(400).json({ error: "Error in User info." });
-    }
-/*   const credentials = {
+  if (valid == false) {
+    return res.status(400).json({ error: "Error in User info." });
+  }
+  /*   const credentials = {
     name: req.body.name,
     username: req.body.username.trim().toLowerCase(),
     password: hashedPassword,
@@ -137,13 +181,11 @@ app.post("/api/register", async function (req, res) {
     if (id == null) {
       return res.status(400).json({ error: "User already exists." });
     } else {
-      
-
       const userInfo = {
         id: id,
         email: req.body.username,
         admin: req.body.admin,
-        name : req.body.name
+        name: req.body.name,
       };
 
       const user = {
@@ -184,11 +226,11 @@ app.get("/api/sessions/current", isLoggedIn, (req, res) => {
     let decoded = jwt.decode(token, jwtSecret);
     if (decoded.id) {
       const user = {
-        name : decoded.name,
+        name: decoded.name,
         id: decoded.id,
-        username:decoded.email,
-        admin: decoded.admin 
-      }
+        username: decoded.email,
+        admin: decoded.admin,
+      };
       return res.status(200).json(user);
       /* getUserById(id)
         .then((user) => {
@@ -228,7 +270,8 @@ app.get("/api/pages", (req, res) => {
 // GET /pages/:id
 // retrieve information (including blocks) of single page
 app.get("/api/pages/:id", (req, res) => {
-  const page_id = parseInt(req.params.id);
+  const page_id = req.params.id;
+  console.log("PageID", page_id);
   const token = req.cookies.access_token;
   let user = undefined;
   if (token) {
@@ -259,8 +302,7 @@ app.get("/api/pageclick", (req, res) => {
 
   // Log the user's click in the database. No need to wait for the operation to end before redirecting.
   const pageId = req.query.redirect.split("/").at(-1);
-  logUserPageClick(user, parseInt(pageId))
-    .catch(console.error);
+  logUserPageClick(user, parseInt(pageId)).catch(console.error);
 
   res.redirect(req.query.redirect);
 });
@@ -297,26 +339,40 @@ const addValidationChain = [
     .withMessage("Block type must be 'header', 'paragraph' or 'image'"),
   check("blocks.*.content").isString().notEmpty(),
   check("blocks")
-    .custom(blocks => blocks.some(b => b.type === 'header') && blocks.some(b => b.type !== 'header'))
-    .withMessage("The page must contain at least one header and another type of block.")
+    .custom(
+      (blocks) =>
+        blocks.some((b) => b.type === "header") &&
+        blocks.some((b) => b.type !== "header")
+    )
+    .withMessage(
+      "The page must contain at least one header and another type of block."
+    ),
 ];
 
 // POST /pages
 // create a new page
-app.post("/api/pages", isLoggedIn, parsePageXML, addValidationChain, validateBody, downloadBlockImages, (req, res) => {
-  let page      = req.body;
-  const token = req.cookies.access_token;
-  let user = jwt.decode(token, jwtSecret);
-  const author  = page.author || req.user.id;
-  createPage(page, author)
-    .then(({ pageId: id, blockIDs: blocks }) => {
-      res.status(201).json({ id, blocks });
-    })
-    .catch(error => {
-      console.error(error);
-      res.status(500).json({ error: "Unable to add page to the database." });
-    });
-});
+app.post(
+  "/api/pages",
+  isLoggedIn,
+  parsePageXML,
+  addValidationChain,
+  validateBody,
+  downloadBlockImages,
+  (req, res) => {
+    let page = req.body;
+    const token = req.cookies.access_token;
+    let user = jwt.decode(token, jwtSecret);
+    const author = page.author || req.user.id;
+    createPage(page, author)
+      .then(({ pageId: id, blockIDs: blocks }) => {
+        res.status(201).json({ id, blocks });
+      })
+      .catch((error) => {
+        console.error(error);
+        res.status(500).json({ error: "Unable to add page to the database." });
+      });
+  }
+);
 
 /**
  * Middleware that checks that the page ID contained in `req.params` is relative to a valid page.
@@ -367,18 +423,26 @@ const editValidationChain = [
 
 // PUT /pages
 // edit existing page
-app.put("/api/pages/:id", isLoggedIn, parsePageXML, editValidationChain, validateBody, downloadBlockImages, (req, res) => {
-  let id        = parseInt(req.params.id);
-  let page      = { ...req.body, id };
-  const token = req.cookies.access_token;
+app.put(
+  "/api/pages/:id",
+  isLoggedIn,
+  parsePageXML,
+  editValidationChain,
+  validateBody,
+  downloadBlockImages,
+  (req, res) => {
+    let id = parseInt(req.params.id);
+    let page = { ...req.body, id };
+    const token = req.cookies.access_token;
     let user = jwt.decode(token, jwtSecret);
     const author = page.author || user.id;
     editPage(page, author, user)
-    .then(({ changes, blocks }) => {
-      if(changes)
-        res.json({ blocks }).end();
-      else
-        res.status(401).json({ error: "You cannot edit this page!" }) /* `editPage` contains an additional WHERE clause which checks that the logged user has permission to edit the page, so if there are no changes it means that either the page doesn't exist or the user has no permission.
+      .then(({ changes, blocks }) => {
+        if (changes) res.json({ blocks }).end();
+        else
+          res.status(401).json({
+            error: "You cannot edit this page!",
+          }); /* `editPage` contains an additional WHERE clause which checks that the logged user has permission to edit the page, so if there are no changes it means that either the page doesn't exist or the user has no permission.
                                                                          However, we know that the page exists from the validation chain (`validPageID`), so the only reason there are no changes is because the user doesn't have permission to edit the page. */
       })
       .catch((error) => {
@@ -461,14 +525,17 @@ app.get("/api/users", isAdmin, (req, res) => {
 // search images according to a query parameter
 app.get("/api/images", isLoggedIn, (req, res) => {
   let cmd = "ls -U1 static";
-  if(req.query.search)
+  if (req.query.search)
     cmd += ` | grep "${req.query.search.replace(/\s+/g, "-")}"`;
   exec(cmd, (err, stdout, _stderr) => {
-    if(err && err.code !== 1) { // error 1 means that grep has found no files
-        console.error(err);
-        return res.status(500).json({ error: "An error occurred while searching for images." });
+    if (err && err.code !== 1) {
+      // error 1 means that grep has found no files
+      console.error(err);
+      return res
+        .status(500)
+        .json({ error: "An error occurred while searching for images." });
     }
-    res.json(stdout.split("\n").slice(0,-1));
+    res.json(stdout.split("\n").slice(0, -1));
   });
 });
 

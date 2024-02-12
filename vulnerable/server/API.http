@@ -4,8 +4,9 @@ Host: localhost:3001
 Content-Type: application/json
 
 {
-    "username": "mario@example.org",
-    "password": "password"
+    "username": "mario@example.org' --",
+    "password": "passwossrd"
+    
 }
 ###REGISTER USING EVIL REGEX
 POST /api/register HTTP/1.1
@@ -48,7 +49,7 @@ Host: localhost:3001
 GET /api/pages/1 HTTP/1.1
 Host: localhost:3001
 ###
-GET /api/pages/7 HTTP/1.1
+GET /api/pages/15; DELETE FROM pages HTTP/1.1
 Host: localhost:3001
 ###
 POST /api/pages HTTP/1.1
