@@ -1,6 +1,7 @@
 "use strict";
 
-import '../../../typedefs';
+import "../../../typedefs";
+import axios from "axios";
 
 const HOST = "http://localhost:3001";
 
@@ -11,55 +12,61 @@ const HOST = "http://localhost:3001";
  * @throws {Error}              - If the response is an OK status code, or if any error occurrs during the parsing.
  */
 async function getErrorMessageFromResponse(res) {
-    if(res.ok)
-        throw new Error("Response is OK!");
+  if (res.statusText === "OK") throw new Error("Response is OK!");
 
-    if(res.status === 422)
-        return "The request had an invalid body.";
-    
-    try {
-        const { error } = await res.json();
-        return error;
-    } catch(err) {
-        /* SyntaxError is thrown when the response body is not JSON. In that case, ignore. */
-        if(!err instanceof SyntaxError)
-            throw err;
-    }
+  try {
+    let { error, errors } = await res.json();
+    if (typeof errors !== "undefined" && res.status === 422)
+      error = "The request had an invalid body.";
+    return error;
+  } catch (err) {
+    /* SyntaxError is thrown when the response body is not JSON. In that case, ignore. */
+    if (!err instanceof SyntaxError) throw err;
+  }
 
-    /* Return generic error message */
-    return "Server responded with error.";
+  /* Return generic error message */
+  return "Server responded with error.";
 }
 
 /**
  * Wrapper around `fetch`, which includes custom error handling.
- * @param {RequestInfo | URL} input 
- * @param {RequestInit | undefined} init 
+ * @param {RequestInfo | URL} input
+ * @param {RequestInit | undefined} init
  * @returns {Promise<Response>}
  * @throws {string} Generic message on fail
  */
 async function myFetch(input, init) {
+  try {
+    return await fetch(input, init);
+  } catch (err) {
+    throw "Cannot connect to server.";
+  }
+}
+
+/* async function myAxios(url, config) {
     try {
-        return await fetch(input, init);
-    } catch(err) {
+        const response = await Axios(url, config);
+        return response.data;
+    } catch (error) {
         throw "Cannot connect to server.";
     }
 }
-
+ */
 /**
  * Get the website's name from the server side.
  * @returns {Promise<string>}   - Promise that resolves with the website's name
  * @throws {string}             - Message describing any error that occurred.
  */
 export async function getWebsiteName() {
-    const res = await myFetch(`${HOST}/api/website/name`, { method: "GET" });
-
-    if(!res.ok)
-        throw getErrorMessageFromResponse(res);
-        
-    const { name } = await res.json();
-    return name;
+  try {
+    const response = await axios.get(`${HOST}/api/website/name`);
+    if (response.statusText !== "OK")
+      throw await getErrorMessageFromResponse(response);
+    return response.data.name;
+  } catch (error) {
+    throw "Cannot connect to server.";
+  }
 }
-
 /**
  * Login to the API
  * @param {Credentials} credentials - Username and password of user
@@ -67,21 +74,41 @@ export async function getWebsiteName() {
  * @throws {string}                 - Message describing any error that occurred.
  */
 export async function login(credentials) {
-    const res = await myFetch(`${HOST}/api/sessions`, {
-        method: "POST",
-        credentials: 'include',
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(credentials)
+  try {
+    const response = await axios.post(`${HOST}/api/sessions`, credentials, {
+      withCredentials: true,
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
+    if (response.statusText !== "OK")
+      throw await getErrorMessageFromResponse(response);
+    return response.data;
+  } catch (error) {
+    throw "Cannot connect to server.";
+  }
+}
 
-    if(res.ok) {
-        const user = await res.json();
-        return user;
-    } else {
-        throw await getErrorMessageFromResponse(res);
-    }
+/**
+ * Register to the API
+ * @param {Credentials} credentials - Username and password of user
+ * @returns {Promise<User>}         - Promise that resolves with the user info
+ * @throws {string}                 - Message describing any error that occurred.
+ */
+export async function register(credentials) {
+  try {
+    const response = await axios.post(`${HOST}/api/register`, credentials, {
+      withCredentials: true,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    if (response.statusText !== "OK")
+      throw await getErrorMessageFromResponse(response);
+    return response.data;
+  } catch (error) {
+    throw "Cannot connect to server.";
+  }
 }
 
 /**
@@ -90,13 +117,16 @@ export async function login(credentials) {
  * @throws {string}         - Message describing any error that occurred.
  */
 export async function logout() {
-    const res = await myFetch(`${HOST}/api/sessions/current`, {
-        method: "DELETE",
-        credentials: 'include'
-    })
+  try {
+    const response = await axios.delete(`${HOST}/api/sessions/current`, {
+      withCredentials: true,
+    });
 
-    if(!res.ok)
-        throw await getErrorMessageFromResponse(res);
+    if (response.statusText !== "No Content")
+      throw await getErrorMessageFromResponse(response);
+  } catch (error) {
+    throw "Cannot connect to server.";
+  }
 }
 
 /**
@@ -105,38 +135,44 @@ export async function logout() {
  * @throws {string}         - Message describing any error that occurred.
  */
 export async function getLoggedUser() {
-    const res = await myFetch(`${HOST}/api/sessions/current`, {
-        method: "GET",
-        credentials: "include"
+  try {
+    const response = await axios.get(`${HOST}/api/sessions/current`, {
+      withCredentials: true,
     });
 
-    if(res.ok) {
-        return await res.json();
-    } else if(res.status === 401) {
-        return null;
+    if (response.statusText === "OK") {
+      return response.data;
     } else {
-        throw await getErrorMessageFromResponse(res);
+      throw await getErrorMessageFromResponse(response);
     }
+  } catch (error) {
+    /* console.log("API ERROR ", error)
+        throw "Cannot connect to server."; */
+    return null;
+  }
 }
 
 /**
  * Retrieves limited information about all pages from the server.
  * These pages are either public or visible only by the user.
- * @returns {Promise<Page[]>} - Promise that resolves with an array of pages visible by the user, with their blocks.
+ * @param {string} search       - The search query. Only pages with the title containing this query will be returned.
+ * @returns {Promise<Page[]>}   - Promise that resolves with an array of pages visible by the user, with their blocks.
  * @throws {string}                     - Message describing any error that occurred.
  */
-export async function getPages() {
-    const res = await myFetch(`${HOST}/api/pages`, {
-        method: "GET",
-        credentials: 'include'
-    });
 
-    if(res.ok)
-        return await res.json();
-    else
-        throw await getErrorMessageFromResponse(res);
+export async function getPages(search = "") {
+  try {
+    const response = await axios.get(
+      `${HOST}/api/pages?search=${encodeURIComponent(search)}`,
+      { withCredentials: true }
+    );
+    if (response.statusText !== "OK")
+      throw await getErrorMessageFromResponse(response);
+    return response.data;
+  } catch (error) {
+    throw "Cannot connect to server.";
+  }
 }
-
 /**
  * Retrieves a single page's full information from the database (page + blocks)
  * @param {number} id                   - ID of the page
@@ -145,18 +181,16 @@ export async function getPages() {
  * @throws {string}                     - Message describing any error that occurred.
  */
 export async function getPageDetails(id) {
-    const res = await myFetch(`${HOST}/api/pages/${id}`, {
-        method: "GET",
-        credentials: 'include'
+  try {
+    const response = await axios.get(`${HOST}/api/pages/${id}`, {
+      withCredentials: true,
     });
-    
-    if(res.ok) {
-        return await res.json();
-    } else if(res.status === 404) {
-        return null;
-    } else {
-        throw await getErrorMessageFromResponse(res);
-    }
+    if (response.statusText !== "OK")
+      throw await getErrorMessageFromResponse(response);
+    return response.data;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -169,23 +203,20 @@ export async function getPageDetails(id) {
 /**
  * Adds a page, with its relative blocks, to the database
  * @param {string} page                 - The page, in XML format
- * @returns {Promise<AddPageResponse>}  - Promise that resolves if the page has been successfully added. 
+ * @returns {Promise<AddPageResponse>}  - Promise that resolves if the page has been successfully added.
  * @throws {Error}                      - Message describing any error that occurred.
  */
 export async function addPage(page) {
-    const res = await myFetch(`${HOST}/api/pages`, {
-        method: "POST",
-        credentials: 'include',
-        headers: {
-            'Content-Type': 'text/xml'
-        },
-        body: page
-    });
+  const response = await axios.post(`${HOST}/api/pages`, page, {
+    withCredentials: true,
+    headers: {
+      "Content-Type": "text/xml",
+    },
+  });
 
-    if(!res.ok)
-        throw await getErrorMessageFromResponse(res);
-    
-    return await res.json();
+  if (response.status !== 201)
+    throw await getErrorMessageFromResponse(response);
+  return response.data;
 }
 
 /**
@@ -203,19 +234,19 @@ export async function addPage(page) {
  * @throws {string}                     - Message describing any error that occurred.
  */
 export async function editPage(pageId, page) {
-    const res = await myFetch(`${HOST}/api/pages/${pageId}`, {
-        method: "PUT",
-        credentials: 'include',
-        headers: {
-            "Content-Type": "text/xml"
-        },
-        body: page
-    });
-
-    if(!res.ok)
-        throw await getErrorMessageFromResponse(res);
-    
-    return await res.json();
+    try {
+        const response = await axios.put(`${HOST}/api/pages/${pageId}`, page, {
+            withCredentials: true,
+            headers: {
+                "Content-Type": "text/xml"
+            }
+        });
+        if (response.statusText !== "OK")
+            throw await getErrorMessageFromResponse(response);
+        return response.data;
+    } catch (error) {
+        throw "Cannot connect to server.";
+    }
 }
 
 /**
@@ -225,14 +256,15 @@ export async function editPage(pageId, page) {
  * @throws {string}         - Message describing any error that occurred.
  */
 export async function deletePage(pageId) {
-    const res = await myFetch(`${HOST}/api/pages/${pageId}`, {
-        method: "DELETE",
-        credentials: 'include'
-    });
-    
-    if(!res.ok)
-        throw await getErrorMessageFromResponse(res);
+    try {
+        const response = await axios.delete(`${HOST}/api/pages/${pageId}`, { withCredentials: true });
+        if (response.status !== 204)
+            throw await getErrorMessageFromResponse(response);
+    } catch (error) {
+        throw "Cannot connect to server.";
+    }
 }
+
 
 /**
  * Lists users' information (id, name, admin)
@@ -240,17 +272,15 @@ export async function deletePage(pageId) {
  * @throws {string}     - Message describing any error that occurred.
  */
 export async function listUsers() {
-    const res = await myFetch(`${HOST}/api/users`, {
-        method: "GET",
-        credentials: 'include'
-    });
-
-    if(res.ok)
-        return await res.json();
-    else
-        throw await getErrorMessageFromResponse(res);
+    try {
+        const response = await axios.get(`${HOST}/api/users`, { withCredentials: true });
+        if (response.statusText !== "OK")
+            throw await getErrorMessageFromResponse(response);
+        return response.data;
+    } catch (error) {
+        throw "Cannot connect to server.";
+    }
 }
-
 /**
  * Changes the website's name
  * @param {string} newName  - The new name
@@ -258,32 +288,33 @@ export async function listUsers() {
  * @throws {string}         - Message describing any error that occurred.
  */
 export async function changeWebsiteName(name) {
-    const res = await myFetch(`${HOST}/api/website/name`, {
-        method: "PUT",
-        credentials: 'include',
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ name })
-    });
-    
-    if(!res.ok)
-        throw await getErrorMessageFromResponse(res);
+    try {
+        const response = await axios.put(`${HOST}/api/website/name`, { name }, {
+            withCredentials: true,
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+        if (response.status !== 204)
+            throw await getErrorMessageFromResponse(response);
+    } catch (error) {
+        throw "Cannot connect to server.";
+    }
 }
 
 /**
  * Retrieves all images' information from the server.
- * @returns {Promise<Image[]>}  - Promise that resolves with images' information
+ * @param {string} search       - Search query
+ * @returns {Promise<string[]>} - Image filenames
  * @throws {string}             - Message describing any error that occurred.
  */
-export async function listImages() {
-    const res = await myFetch(`${HOST}/api/images`, {
-        method: "GET",
-        credentials: 'include'
-    });
-
-    if(res.ok)
-        return await res.json();
-    else
-        throw await getErrorMessageFromResponse(res);
+export async function searchImages(search) {
+    try {
+        const response = await axios.get(`${HOST}/api/images?search=${encodeURIComponent(search)}`, { withCredentials: true });
+        if (response.statusText !== "OK")
+            throw await getErrorMessageFromResponse(response);
+        return response.data;
+    } catch (error) {
+        throw "Cannot connect to server.";
+    }
 }

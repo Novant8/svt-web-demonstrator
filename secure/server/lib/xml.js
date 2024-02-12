@@ -11,7 +11,7 @@ const libxmljs = require("libxmljs");
 exports.parsePageXML = (req, res, next) => {
     let pageXml;
     try {
-        pageXml = libxmljs.parseXml(req.body, { noent: false });
+        pageXml = libxmljs.parseXml(req.body, { noent: true });
     } catch(e) {
         return res.status(422).json({ error: "Invalid XML structure." });
     }

@@ -52,3 +52,28 @@
  * @property {string} filename
  * @property {string} name
  */
+
+/**
+ * @typedef UrlImageBlock
+ * @type {object}
+ * @property {string} fileName
+ * @property {string} url
+ */
+
+/**
+ * @typedef FileImageBlock
+ * @type {object}
+ * @property {string} fileName
+ * @property {string} fileContent Encoded in base64
+ */
+
+/**
+ * @typedef ExistingImageBlock
+ * @type {object}
+ * @property {string} fileName
+ */
+
+/**
+ * @typedef ImageBlock
+ * @type {UrlImageBlock | FileImageBlock | ExistingImageBlock}
+ */

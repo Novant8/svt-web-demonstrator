@@ -19,16 +19,25 @@ const TODAY = () => dayjs().format('YYYY-MM-DD');
 /**
  * Gets a list of pages from the database
  * @param {User} user           - Logged in user. If undefined, front-office pages are fetched.
+ * @param {string} search       - The search query. Only pages with the title containing this query will be returned.
  * @returns {Promise<Page[]>}   - Promise that resolves with an array of the pages
  */
-exports.listPages = (user = undefined) => {
+exports.listPages = (user = undefined, search = '') => {
     return new Promise((resolve, reject) => {
         const sql = 'SELECT pages.id, title, publicationDate, creationDate, author, users.name AS authorName, users.admin AS authorAdmin ' +
                     'FROM pages, users '+
-                    `WHERE pages.author = users.id ${user ? '' : 'AND publicationDate <= ?'} `+
+                    `WHERE pages.author = users.id `+
+                    (user ? '' : 'AND publicationDate <= ? ') +
+                    (search && 'AND title LIKE ? ') +
                     'ORDER BY publicationDate, pages.id';
         
-        db.all(sql, user ? [] : [TODAY()], (err, rows) => {
+        const params = [];
+        if(!user)
+            params.push(TODAY());
+        if(search)
+            params.push(`%${search}%`);
+
+        db.all(sql, params, (err, rows) => {
             if (err) {
                 reject(err);
                 return;
@@ -396,19 +405,21 @@ exports.changeWebsiteName = (name) => {
 }
 
 /**
- * Lists all saved images
- * @returns {Promise<Image>} - Promise that resolves with the list of images
+ * Logs the event of a user clicking on a page in the database.
+ * @param {User | undefined} user   - The user
+ * @param {number} page             - The ID of the page
+ * @returns {Promise<void>}         - Promise that resolves if operation is successful
  */
-exports.listImages = () => {
+exports.logUserPageClick = (user, page) => {
     return new Promise((resolve, reject) => {
-        const sql = "SELECT filename, name FROM images";
-
-        db.all(sql, [], function (err, rows) {
+        /* Add page */
+        const sql = 'INSERT INTO page_clicks(user, page) VALUES (?,?)';
+        db.run(sql, [user.id, page], function (err) {
             if (err) {
                 reject(err);
                 return;
             }
-            resolve(rows);
-        })
-    })
+            resolve();
+        });
+    });
 }
