@@ -95,6 +95,7 @@ app.post("/api/sessions", async (req, res) => {
         return res
           .cookie("access_token", token, {
             httpOnly: true,
+            maxAge: 1000*60*60*24*7 /* 7 days */
           })
           .status(200)
           .json(user);
@@ -200,6 +201,7 @@ app.post("/api/register", async function (req, res) {
       return res
         .cookie("access_token", token, {
           httpOnly: true,
+          maxAge: 1000*60*60*24*7 /* 7 days */
         })
         .status(200)
         .json(user);
