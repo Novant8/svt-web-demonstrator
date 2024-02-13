@@ -7,6 +7,7 @@ const axios = require("axios").default;
 const { v4: uuidv4 } = require("uuid");
 const { fromBuffer: fileTypeFromBuffer } = require('file-type-cjs');
 const path = require('path');
+const { useAgent } = require('request-filtering-agent');
 
 /**
  * @typedef ImageFileType
@@ -122,12 +123,15 @@ exports.downloadBlockImages = (req, res, next) => {
                 let img_res;
                 try {
                     img_res = await axios.get(image.url, {
+                        httpAgent: useAgent(image.url),
+                        httpsAgent: useAgent(image.url),
                         responseType: 'arraybuffer',
                         headers: {
                             'Accept': '*/*'
                         }
                     });
                 } catch(e) {
+                    console.error(e);
                     throw new ImageBlockError("Unable to download the image from the given URL.");
                 }
 
