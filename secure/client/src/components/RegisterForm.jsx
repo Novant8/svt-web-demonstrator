@@ -84,13 +84,15 @@ export default function RegisterForm({ onRegister }) {
       valid = false;
     }
 
-    const testPassword = new RegExp(name);
-    const match = testPassword.test(password);
+    const nameTest = name.toLowerCase().trim();
+  const passwordTest = password.toLowerCase().trim();
+
+    
 
     if (password.length === 0) {
       setPasswordError("Please insert a password.");
       valid = false;
-    } else if (match) {
+    } else if (passwordTest.includes(nameTest)) {
       setPasswordError("Do not include name in password.");
       valid = false;
     }
@@ -101,8 +103,7 @@ export default function RegisterForm({ onRegister }) {
   const handleSubmit = (event) => {
     event.preventDefault();
     setError("");
-    const admin = false;
-    const credentials = { name, username, password, admin };
+    const credentials = { name, username, password  };
 
     if (validate()) doSignUp(credentials);
   };

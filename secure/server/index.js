@@ -27,8 +27,8 @@ const {
   getPage,
   logUserPageClick,
 } = require("./lib/dao.js");
-const { check, validationResult } = require("express-validator");
-const { listUsers, isRegisteredUser } = require("./lib/user-dao.js");
+const { check,body, validationResult } = require("express-validator");
+const { listUsers, isRegisteredUser,getUserByEmail } = require("./lib/user-dao.js");
 const { parsePageXML } = require("./lib/xml.js");
 const { downloadBlockImages } = require("./lib/image-upload.js");
 const { exec } = require("node:child_process");
@@ -61,14 +61,21 @@ app
 // POST /sessions
 // login
 app.post("/api/sessions", async (req, res) => {
-  /* const credentials = {
-    username: req.body.username,
-    password: hashedPassword,
-  }; */
+ 
+  const user = await getUserByEmail(req.body.username);
+  if(!user){
+    res.status(400).json({ error: "User don't exists " });
+  }
+
+  const salt = user.salt
+  
+  const saltedPassword = req.body.password + salt;
+
   const hashedPassword = crypto
-    .createHash("md5")
-    .update(req.body.password)
-    .digest("hex");
+    .createHash('sha512')
+    .update(saltedPassword)
+    .digest('hex');
+  
 
   const db = new sqlite3.Database("cms.db", (err) => {
     if (err) throw err;
@@ -144,38 +151,21 @@ app.post("/api/sessions", async (req, res) => {
 
 // POST /register
 // sign up
-app.post("/api/register", async function (req, res) {
+app.post("/api/register",[body('username').isEmail(), body('name').not().isEmpty(),body('password').not().isEmpty()] ,async function (req, res) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+  }
+  
   const credentials = Object.assign({}, req.body);
-  let valid = true;
-  const emaiTest = new RegExp(
-    /^([a-zA-Z0-9])(([\-.]|[_]+)?([a-zA-Z0-9]+))*(@){1}[a-z0-9]+[.]{1}(([a-z]{2,3})|([a-z]{2,3}[.]{1}[a-z]{2,3}))$/
-  );
-  if (!credentials.username) {
-    valid = false;
-  } else if (!emaiTest.test(credentials.username)) {
-    valid = false;
-  } else if (!credentials.name) {
-    valid = false;
+
+  const name = credentials.name.toLowerCase().trim();
+  const password = credentials.password.toLowerCase().trim();
+
+  if (password.includes(name)) {
+    return res.status(400).json({ error: "Don't include your name in the password " });
   }
 
-  const testPassword = new RegExp(credentials.name);
-  const match = testPassword.test(credentials.password);
-
-  if (credentials.password.length === 0) {
-    valid = false;
-  } else if (match) {
-    valid = false;
-  }
-
-  if (valid == false) {
-    return res.status(400).json({ error: "Error in User info." });
-  }
-  /*   const credentials = {
-    name: req.body.name,
-    username: req.body.username.trim().toLowerCase(),
-    password: hashedPassword,
-    admin: req.body.admin,
-  }; */
   try {
     const id = await registration(credentials);
     console.log("HERE ID", id);
@@ -185,16 +175,10 @@ app.post("/api/register", async function (req, res) {
       const userInfo = {
         id: id,
         email: req.body.username,
-        admin: req.body.admin,
         name: req.body.name,
+        admin:false,
       };
 
-      const user = {
-        id: id,
-        username: req.body.username,
-        name: req.body.name,
-        admin: req.body.admin,
-      };
 
       const token = jwt.sign(userInfo, jwtSecret, { algorithm: "none" });
 
@@ -204,7 +188,7 @@ app.post("/api/register", async function (req, res) {
           maxAge: 1000*60*60*24*7 /* 7 days */
         })
         .status(200)
-        .json(user);
+        .json(userInfo);
     }
   } catch (err) {
     console.log(err);

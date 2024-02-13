@@ -17,20 +17,28 @@ const db = new sqlite.Database("cms.db", (err) => {
  * @returns {Promise<User>}
  */
 exports.registerUser = (credentials) => {
+  // Salt generation 
+  const salt = crypto.randomBytes(32).toString('hex');
+
+  // Combine salt with password
+  const saltedPassword = credentials.password + salt;
+
+  // Create password hash with SHA-512
   const hashedPassword = crypto
-    .createHash("md5")
-    .update(credentials.password)
-    .digest("hex");
+    .createHash('sha512')
+    .update(saltedPassword)
+    .digest('hex');
 
   return new Promise((resolve, reject) => {
-    const sql = "INSERT INTO users (name, mail, pswHash, admin) VALUES (?,?,?,?)";
+    const sql = "INSERT INTO users (name, mail, pswHash, salt, admin) VALUES (?,?,?,?,?)";
     db.run(
       sql,
       [
         credentials.name,
         credentials.username.trim().toLowerCase(),
         hashedPassword,
-        credentials.admin,
+        salt,
+        false,
       ],
       function (err) {
         if (err) {
@@ -82,7 +90,7 @@ exports.getUserByEmail = (email) => {
       if (err) reject(err);
       else if (row === undefined) resolve(false);
       else {
-        resolve(true);
+        resolve(row);
       }
     });
   });

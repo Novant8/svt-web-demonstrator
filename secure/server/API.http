@@ -4,6 +4,16 @@ Host: localhost:3001
 Content-Type: application/json
 
 {
+    "username": "sofia@example.org",
+    "password": "password"
+    
+}
+### LOGIN AS ADMIN
+POST /api/sessions HTTP/1.1
+Host: localhost:3001
+Content-Type: application/json
+
+{
     "username": "mario@example.org' --",
     "password": "passwossrd"
     
@@ -25,8 +35,8 @@ Host: localhost:3001
 Content-Type: application/json
 
 {
-    "name": "prova",
-    "username": "prova@exa////mple.org",
+    "name": "test4",
+    "username": "test4@example.org",
     "password": "password",
     "admin":true 
 }
