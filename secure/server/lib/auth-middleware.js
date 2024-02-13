@@ -2,9 +2,10 @@
 
 const jwt = require("jsonwebtoken");
 const userDao = require("./user-dao"); // module for accessing the user info in the DB
+require("dotenv").config()
 
 //JSON WEB TOKEN SECRET
-const jwtSecret = "mydfs68jlk5620jds7akl8m127a8sdh168hj";
+const jwtSecret =process.env.JWT_SECRET;
 
 exports.registration = async (credentials) => {
   const username = credentials.username;
@@ -45,7 +46,8 @@ exports.login = async (credentials) => {
  * @param {Express.NextFunction} next
  */
 exports.isLoggedIn = (req, res, next) => {
-  if (req.cookies.access_token) {
+  const token = req.cookies.access_token
+  if (jwt.verify(token,jwtSecret)) {
     return next();
   }
 
@@ -60,7 +62,7 @@ exports.isLoggedIn = (req, res, next) => {
  */
 exports.isAdmin = (req, res, next) => {
   const token = req.cookies.access_token;
-  if (token) {
+  if (jwt.verify(token,jwtSecret)) {
     let decoded = jwt.decode(token, jwtSecret);
     if (decoded.id) return next();
 

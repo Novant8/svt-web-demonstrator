@@ -9,21 +9,20 @@ const jwtSecret = "mydfs68jlk5620jds7akl8m127a8sdh168hj";
 exports.registration = async (credentials) => {
   const username = credentials.username;
   try {
-    const response = await userDao.getUserByEmail(username)
-    if (response){
-      return null
-    } else{
-      const id = await userDao.registerUser(credentials)
-      if ( typeof id === "number"){
-        return id; 
-      }else {
-        return null; 
+    const response = await userDao.getUserByEmail(username);
+    if (response) {
+      return null;
+    } else {
+      const id = await userDao.registerUser(credentials);
+      if (typeof id === "number") {
+        return id;
+      } else {
+        return null;
       }
     }
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
-  
 };
 
 exports.login = async (credentials) => {
@@ -45,7 +44,9 @@ exports.login = async (credentials) => {
  * @param {Express.NextFunction} next
  */
 exports.isLoggedIn = (req, res, next) => {
-  if (req.cookies.access_token) {
+  const token = req.cookies.access_token;
+
+  if (token) {
     return next();
   }
 

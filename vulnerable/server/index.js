@@ -61,10 +61,7 @@ app
 // POST /sessions
 // login
 app.post("/api/sessions", async (req, res) => {
-  /* const credentials = {
-    username: req.body.username,
-    password: hashedPassword,
-  }; */
+ 
   const hashedPassword = crypto
     .createHash("md5")
     .update(req.body.password)
@@ -74,9 +71,8 @@ app.post("/api/sessions", async (req, res) => {
     if (err) throw err;
   });
 
-  console.log("USERAME", req.body.username);
   await db.get(
-    `SELECT * FROM users WHERE mail = '${req.body.username}' and pswHash = '${hashedPassword}'`,
+    `SELECT * FROM users WHERE mail = ? and pswHash = ?`,[req.body.username,hashedPassword],
     (err, row) => {
       if (err) {
         return err;
