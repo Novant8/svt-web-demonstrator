@@ -78,21 +78,21 @@ export default function Page({ preview, onDelete }) {
         setError();
         getPageDetails(page_id)
             .then(page => {
-                page = {
-                    ...page,
-                    blocks: page.blocks.map(block => {
-                        if(block.type === 'image')
-                            return { ...block, content: `http://localhost:3001/${block.content}` };
-                        return block;
-                    })
-                };
-                setPage(page);
                 if(page) {
+                    page = {
+                        ...page,
+                        blocks: page.blocks.map(block => {
+                            if(block.type === 'image')
+                                return { ...block, content: `http://localhost:3001/${block.content}` };
+                            return block;
+                        })
+                    };
                     if(!page.publicationDate || page.publicationDate > TODAY())
                         setPageRestricted(true);
                     else
                         setPageRestricted(false);
                 }
+                setPage(page);
             })
             .catch(err => setError(err))
     }, [ user, page_id, preview ]);
