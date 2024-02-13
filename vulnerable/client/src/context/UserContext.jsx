@@ -1,6 +1,7 @@
 import React, { createContext, useEffect, useState } from "react";
 import '../../../typedefs';
 import { getLoggedUser } from "../lib/api";
+import { getUserStorage, setUserStorage } from "../lib/user-storage";
 
 /**
  * @typedef UserContextValues
@@ -25,35 +26,22 @@ export function UserProvider({ children }) {
 
     /**
      * Updates the current user and sets its value in the local storage accordingly.
-     * The user info doesn't have to be fetched from the API the next time the website is visited so this is faster and better, right?
+     * The user info doesn't have to be fetched from the API the next visit so this is faster and better, right?
      * @param {User} user 
      */
     function setUser(user) {
-        localStorage.setItem("userID", user.id);
-        localStorage.setItem("username", user.username);
-        localStorage.setItem("name", user.name);
-        localStorage.setItem("admin", user.admin);
         _setUser(user);
-    }
-
-    /**
-     * Retrieves the user from the local storage, if available.
-     * @returns {User | null} The user if it has been found in the local storage, `null` otherwise.
-     */
-    function getUserFromLocalStorage() {
-        try {
-            const id = localStorage.getItem("userID");
-            const username = localStorage.getItem("username");
-            const name = localStorage.getItem("name");
-            const admin = localStorage.getItem("admin");
-            return id && { id, username, name, admin };
-        } catch(e) {
-            return null;
-        }
+        setUserStorage(user);
     }
 
     useEffect(() => {
-        const userStorage = getUserFromLocalStorage();
+        const updateUserFromStorage = () => _setUser(getUserStorage());
+        addEventListener("storage", updateUserFromStorage);
+        return () => removeEventListener("storage", updateUserFromStorage);
+    }, []);
+
+    useEffect(() => {
+        const userStorage = getUserStorage();
         if(userStorage) {
             _setUser(userStorage);
             return;
