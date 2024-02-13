@@ -305,7 +305,7 @@ export default function PageForm({ onAdd, onEdit }) {
             invalidFeedback.name = "Please insert a file name.";
         else if (block.content.fileName.length > 200)
             invalidFeedback.name = "File names cannot exceed 200 characters.";
-        if (block.content.fileName.match(`[${ILLEGAL_CHARACTERS}]`))
+        else if (block.content.fileName.match(`[${ILLEGAL_CHARACTERS}]`))
             invalidFeedback.name = `File names must not contain illegal characters: ${ILLEGAL_CHARACTERS.split("").join(" ")}`;
 
         // Validate file/url
