@@ -20,7 +20,7 @@ export default function PageCard({ page }) {
 
   return (
     <Card
-      as={Link} to={`http://localhost:3001/api/pageclick?redirect=${encodeURIComponent(`http://localhost:5173/pages/${page.id}`)}`}
+      as={Link} to={`https://localhost:8081/api/pageclick?redirect=${encodeURIComponent(`http://localhost:5173/pages/${page.id}`)}`}
       state={{ prevLocation: location }}
       className="page-card text-decoration-none h-100"
     >

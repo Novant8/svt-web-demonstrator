@@ -4,7 +4,7 @@
 require("../../typedefs");
 
 const sqlite = require("sqlite3");
-const crypto = require("crypto");
+const bcrypt = require('bcrypt');
 
 // open the database
 const db = new sqlite.Database("cms.db", (err) => {
@@ -17,41 +17,44 @@ const db = new sqlite.Database("cms.db", (err) => {
  * @returns {Promise<User>}
  */
 exports.registerUser = (credentials) => {
-  // Salt generation 
-  const salt = crypto.randomBytes(32).toString('hex');
-
-  // Combine salt with password
-  const saltedPassword = credentials.password + salt;
-
-  // Create password hash with SHA-512
-  const hashedPassword = crypto
-    .createHash('sha512')
-    .update(saltedPassword)
-    .digest('hex');
-
+  const password = credentials.password;
+ 
   return new Promise((resolve, reject) => {
-    const sql = "INSERT INTO users (name, mail, pswHash, salt, admin) VALUES (?,?,?,?,?)";
-    db.run(
-      sql,
-      [
-        credentials.name,
-        credentials.username.trim().toLowerCase(),
-        hashedPassword,
-        salt,
-        false,
-      ],
-      function (err) {
-        if (err) {
-          reject(err);
-        } else {
-          console.log("LASTID", this.lastID);
-          resolve(this.lastID);
-        }
+    bcrypt.genSalt(14, (err, salt) => {
+      if (err) {
+        console.log(err)
+        reject(err);
+      } else {
+        bcrypt.hash(password, salt, (err, hash) => {
+          console.log("HERE")
+          if (err) {
+            reject(err);
+          } else {
+            const sql = "INSERT INTO users (name, mail, pswHash, salt, admin) VALUES (?,?,?,?,?)";
+            db.run(
+              sql,
+              [
+                credentials.name,
+                credentials.username.trim().toLowerCase(),
+                hash,
+                salt,
+                false,
+              ],
+              function (err) {
+                if (err) {
+                  reject(err);
+                } else {
+                  console.log("LASTID", this.lastID);
+                  resolve(this.lastID);
+                }
+              }
+            );
+          }
+        });
       }
-    );
+    });
   });
 };
-
 
 /**
  * Retrieves user info from the database, given their ID

@@ -3,7 +3,7 @@
 import "../../../typedefs";
 import axios from "axios";
 
-const HOST = "http://localhost:3001";
+const HOST = "https://localhost:8081";
 
 /**
  * Determines error message to display depending on a response that has a non-OK response

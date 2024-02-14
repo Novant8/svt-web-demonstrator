@@ -38,14 +38,20 @@ const { parsePageXML } = require("./lib/xml.js");
 const { downloadBlockImages } = require("./lib/image-upload.js");
 const { exec } = require("node:child_process");
 const sqlite3 = require("sqlite3").verbose();
-require("dotenv").config()
+const bcrypt = require("bcrypt");
+require("dotenv").config();
 /**
  * init express
  * @type {express.Application}
  */
+const https = require("https");
+const fs = require("fs");
 const app = new express();
-const port = 3001;
+const portHttps = 8081;
+const portHttp = 3001;
 const jwtSecret = process.env.JWT_SECRET;
+const privateKey = fs.readFileSync("../httpsCert/serverKey.pem");
+const certificate = fs.readFileSync("../httpsCert/cert.pem");
 
 // build app main middleware
 app
@@ -71,85 +77,49 @@ app.post("/api/sessions", async (req, res) => {
     return res.status(400).json({ error: "User does't exist " });
   }
 
-  const salt = user.salt;
+  const salt = user.salt.toString();
 
-  const saltedPassword = req.body.password + salt;
+ bcrypt.hash(req.body.password, salt, (err, hash) => {
+    if (err) {
+      console.log(err)
+      return res
+        .status(400)
+        .json({ error: "Problems during hashing password" });
+    }
 
-  const hashedPassword = crypto
-    .createHash("sha512")
-    .update(saltedPassword)
-    .digest("hex");
+    const db = new sqlite3.Database("cms.db", (err) => {
+      if (err) throw err;
+    });
 
-  const db = new sqlite3.Database("cms.db", (err) => {
-    if (err) throw err;
-  });
+    db.get(
+      "SELECT * FROM users WHERE mail = ? and pswHash = ?",
+      [req.body.username, hash],
+      async (err, row) => {
+        if (err) {
+          return err;
+        } else if (row === undefined) {
+          res.status(400).json({ error: "The Email or Password is wrong " });
+        } else {
+          const userInfo = {
+            id: row.id,
+          };
+          const user = await getUserById(row.id);
+          if (user) {
+            const token = jwt.sign(userInfo, jwtSecret);
 
-  await db.get(
-    "SELECT * FROM users WHERE mail = ? and pswHash = ?",
-    [req.body.username, hashedPassword],
-    async (err, row) => {
-      if (err) {
-        return err;
-      } else if (row === undefined) {
-        res.status(400).json({ error: "The Email or Password is wrong " });
-      } else {
-        const userInfo = {
-          id: row.id,
-        };
-        const user = await getUserById(row.id);
-        if (user) {
-          const token = jwt.sign(userInfo, jwtSecret);
-
-          return res
-            .cookie("access_token", token, {
-              httpOnly: true,
-              maxAge: 1000 * 60 * 60 * 24 * 7 /* 7 days */,
-            })
-            .status(200)
-            .json(user);
+            return res
+              .cookie("access_token", token, {
+                httpOnly: true,
+                maxAge: 1000 * 60 * 60 * 24 * 7 /* 7 days */,
+              })
+              .status(200)
+              .json(user);
+          }
         }
       }
-    }
-  );
+    );
+  });
 });
-
-/* app.post("/api/sessions", (req, res) => {
-  const hashedPassword = crypto
-    .createHash("md5")
-    .update(req.body.password)
-    .digest("hex");
-
-  const credentials = {
-    username: req.body.username,
-    password: hashedPassword,
-  };
-
-  login(credentials)
-    .then((user) => {
-      if (user) {
-        // this is coming from userDao.getUser()
-        const userInfo = {
-          id: user.id,
-          email: user.username.trim().toLowerCase(),
-          admin: user.admin,
-          name : user.name
-        };
-        const token = jwt.sign(userInfo, jwtSecret, { algorithm: "none" });
-
-        return res
-          .cookie("access_token", token, {
-            httpOnly: true,
-          })
-          .status(200)
-          .json(user);
-      }else {
-        res.status(400).json({ error: " The Email or Password is wrong " });
-      }
-    })
-    .catch((err) => {
-      return err;
-    });
-}); */
 
 // POST /register
 // sign up
@@ -158,7 +128,14 @@ app.post(
   [
     body("username").isEmail(),
     body("name").not().isEmpty(),
-    body("password").not().isEmpty(),
+    body("password")
+      .not()
+      .isEmpty()
+      .withMessage("Password cannot be empty")
+      .isLength({ min: 8 })
+      .withMessage("Password must be at least 8 characters long")
+      .matches(/^(?=.*[!@#$%^&*()\-_=+{};:,<.>])(?=.*[a-zA-Z0-9]).{8,}$/)
+      .withMessage("Password must contain at least one special character"),
   ],
   async function (req, res) {
     const errors = validationResult(req);
@@ -228,7 +205,6 @@ app.get("/api/sessions/current", isLoggedIn, async (req, res) => {
       if (user) {
         return res.status(200).json(user);
       }
-
     }
   }
   return res.status(401).json({ error: "No previous session established !" });
@@ -349,7 +325,7 @@ app.post(
     let page = req.body;
     const token = req.cookies.access_token;
     let user = jwt.decode(token, jwtSecret);
-    const author = page.author || req.user.id;
+    const author = page.author || user.id;
     createPage(page, author)
       .then(({ pageId: id, blockIDs: blocks }) => {
         res.status(201).json({ id, blocks });
@@ -527,6 +503,12 @@ app.get("/api/images", isLoggedIn, (req, res) => {
 });
 
 // activate the server
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
+app.listen(portHttp, () => {
+  console.log(`Server listening at http://localhost:${portHttp}`);
 });
+
+https
+  .createServer({ key: privateKey, cert: certificate }, app)
+  .listen(portHttps, () => {
+    console.log(`Server listening at https://localhost:${portHttps}`);
+  });

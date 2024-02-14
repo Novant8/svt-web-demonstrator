@@ -15,6 +15,7 @@ exports.registration = async (credentials) => {
       return null
     } else{
       const id = await userDao.registerUser(credentials)
+      console.log("ID",id)
       if ( typeof id === "number"){
         return id; 
       }else {
@@ -47,10 +48,13 @@ exports.login = async (credentials) => {
  */
 exports.isLoggedIn = (req, res, next) => {
   const token = req.cookies.access_token
-  if (jwt.verify(token,jwtSecret)) {
-    return next();
+  if (token){
+    if (jwt.verify(token,jwtSecret)) {
+      return next();
+    }
+  
   }
-
+ 
   return res.status(401).json({ error: "Not authenticated" });
 };
 
