@@ -107,7 +107,7 @@ function FrontPageList({ pages, loading, error, onSearch, onPageDelete }) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
             />
-            { debouncedSearch && <h3>Pages containing <span dangerouslySetInnerHTML={{ __html: debouncedSearch }} /></h3> }
+            { debouncedSearch && <h3>Pages containing {debouncedSearch}</h3> }
             {
                 error ? <Alert variant="danger" className="text-center my-1"><strong>Error:</strong> {error}</Alert> :
                 loading ? <FrontPageListPlaceholder /> :
@@ -156,7 +156,7 @@ function BackPageList({ pages, loading, error, onSearch, onPageDelete }) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
             />
-            { debouncedSearch && <h3>Pages containing <span dangerouslySetInnerHTML={{ __html: debouncedSearch }} /></h3> }
+            { debouncedSearch && <h3>Pages containing {debouncedSearch}</h3> }
             {
                 error ? <Alert variant="danger" className="text-center"><strong>Error:</strong> {error}</Alert> :
                 noPagesFound ? <Alert variant="dark" className="text-center">No pages found.</Alert> :
