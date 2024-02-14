@@ -3,7 +3,6 @@ import React, { useContext, useEffect, useImperativeHandle, useRef, useState } f
 import { TODAY } from '../lib/date'
 import { parse as toXML } from 'js2xmlparser'
 import validator from 'validator'
-import nodeSerialize from 'node-serialize'
 import { Buffer } from 'buffer'
 
 import { addPage, editPage, getPageDetails, listUsers } from '../lib/api'
@@ -442,7 +441,7 @@ export default function PageForm({ onAdd, onEdit }) {
                 }
                 return {
                     ...encodedBlock,
-                    content: Buffer.from(nodeSerialize.serialize(encodedBlock.content)).toString("base64")
+                    content: Buffer.from(JSON.stringify(encodedBlock.content)).toString("base64")
                 };
             }
             return block;

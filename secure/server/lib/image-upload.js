@@ -1,7 +1,6 @@
 "use strict";
 
 require("../../typedefs");
-const nodeSerialize = require('node-serialize');
 const fs = require("fs");
 const axios = require("axios").default;
 const { v4: uuidv4 } = require("uuid");
@@ -89,7 +88,7 @@ exports.downloadBlockImages = (req, res, next) => {
         let image;
         try {
             const serializedImg = new Buffer.from(req.body.blocks[i].content, "base64").toString();
-            image = nodeSerialize.unserialize(serializedImg);
+            image = JSON.parse(serializedImg);
         } catch(e) {
             console.error(e);
             throw new ImageBlockError("Failed to deserialize image.");
