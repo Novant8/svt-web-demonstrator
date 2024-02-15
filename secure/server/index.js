@@ -288,10 +288,13 @@ app.get("/api/pageclick", (req, res) => {
   }
 
   // Log the user's click in the database. No need to wait for the operation to end before redirecting.
-  const pageId = req.query.redirect.split("/").at(-1);
-  logUserPageClick(user, parseInt(pageId)).catch(console.error);
+  const pageId = parseInt(req.query.redirect);
+  if(isNaN(pageId))
+    return res.redirect("http://localhost:5173/front");
+  
+  logUserPageClick(user, pageId).catch(console.error);
 
-  res.redirect(req.query.redirect);
+  res.redirect(`http://localhost:5173/pages/${pageId}`);
 });
 
 /*** Page creation/modification/deletion ***/
