@@ -66,12 +66,14 @@ exports.isLoggedIn = (req, res, next) => {
  */
 exports.isAdmin = (req, res, next) => {
   const token = req.cookies.access_token;
-  if (jwt.verify(token,jwtSecret)) {
-    let decoded = jwt.decode(token, jwtSecret);
-    if (decoded.id) return next();
-
-    return res.status(401).json({ error: "You are not the admin !" });
+  if(token){
+    if (jwt.verify(token,jwtSecret)) {
+      let decoded = jwt.decode(token, jwtSecret);
+      if (decoded.id) return next();
+  
+      return res.status(401).json({ error: "You are not the admin !" });
+    }
   }
-
+  
   return res.status(401).json({ error: "Not authenticated" });
 };

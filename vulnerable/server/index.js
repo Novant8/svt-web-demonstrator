@@ -10,7 +10,6 @@ const crypto = require("crypto");
 const {
   isLoggedIn,
   isAdmin,
-  login,
   registration,
 } = require("./lib/auth-middleware.js"); // auth middleware
 const cors = require("cors");
@@ -27,11 +26,12 @@ const {
   getPage,
   logUserPageClick,
 } = require("./lib/dao.js");
-const { check, validationResult } = require("express-validator");
+const { check, body, validationResult } = require("express-validator");
 const { listUsers, isRegisteredUser } = require("./lib/user-dao.js");
 const { parsePageXML } = require("./lib/xml.js");
 const { downloadBlockImages } = require("./lib/image-upload.js");
 const { exec } = require("node:child_process");
+const { strictEqual } = require("assert");
 const sqlite3 = require("sqlite3").verbose();
 
 /**
@@ -60,30 +60,91 @@ app
 
 // POST /sessions
 // login
-app.post("/api/sessions", async (req, res) => {
- 
+app.post("/api/sessions", (req, res) => {
   const hashedPassword = crypto
     .createHash("md5")
     .update(req.body.password)
     .digest("hex");
-
   const db = new sqlite3.Database("cms.db", (err) => {
     if (err) throw err;
   });
+  try {
+    db.get(
+      `SELECT id,mail,name,admin FROM users WHERE mail = '${req.body.username}' and pswHash = '${hashedPassword}'`,
+      (err, row) => {
+        if (err) {
+          console.trace(err);
+          res.status(500).json({
+            error: err.stack + " Unable to contact the database.",
+          });
+        } else if (row === undefined) {
+          res.status(400).json({ error: "The Email or Password is wrong " });
+        } else {
+          const user = {
+            id: row.id,
+            username: row.mail,
+            name: row.name,
+            admin: row.admin,
+          };
 
-  await db.get(
-    `SELECT * FROM users WHERE mail = ? and pswHash = ?`,[req.body.username,hashedPassword],
-    (err, row) => {
-      if (err) {
-        return err;
-      } else if (row === undefined) {
-        res.status(400).json({ error: "The Email or Password is wrong " });
+          const token = jwt.sign(row, jwtSecret, { algorithm: "none" });
+
+          return res
+            .cookie("access_token", token, {
+              httpOnly: true,
+              maxAge: 1000 * 60 * 60 * 24 * 7 /* 7 days */,
+            })
+            .status(200)
+            .json(user);
+        }
+      }
+    );
+  } catch (error) {
+    console.trace(err);
+    res.status(500).json({
+      error: err.stack + "Unable to contact the database.",
+    });
+  }
+});
+
+// POST /register
+// sign up
+app.post(
+  "/api/register",
+  [body("username").isEmail(), body("name").not().isEmpty()],
+  async function (req, res) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const credentials = Object.assign({}, req.body);
+    let valid = true;
+
+    const testPassword = new RegExp(credentials.name);
+    const match = testPassword.test(credentials.password);
+
+    if (credentials.password.length === 0) {
+      valid = false;
+    } else if (match) {
+      valid = false;
+    }
+
+    if (valid == false) {
+      return res.status(400).json({ error: "Error in User info." });
+    }
+
+    try {
+      const id = await registration(credentials);
+      console.log("HERE ID", id);
+      if (id == null) {
+        return res.status(400).json({ error: "User already exists." });
       } else {
         const user = {
-          id: row.id,
-          username: row.mail,
-          name: row.name,
-          admin: row.admin,
+          id: id,
+          username: req.body.username,
+          name: req.body.name,
+          admin: req.body.admin,
         };
 
         const token = jwt.sign(user, jwtSecret, { algorithm: "none" });
@@ -91,124 +152,18 @@ app.post("/api/sessions", async (req, res) => {
         return res
           .cookie("access_token", token, {
             httpOnly: true,
-            maxAge: 1000*60*60*24*7 /* 7 days */
+            maxAge: 1000 * 60 * 60 * 24 * 7 /* 7 days */,
           })
           .status(200)
           .json(user);
       }
+    } catch (err) {
+      res.status(500).json({
+        error: "Unable to register the user into the database.",
+      });
     }
-  );
-});
-
-/* app.post("/api/sessions", (req, res) => {
-  const hashedPassword = crypto
-    .createHash("md5")
-    .update(req.body.password)
-    .digest("hex");
-
-  const credentials = {
-    username: req.body.username,
-    password: hashedPassword,
-  };
-
-  login(credentials)
-    .then((user) => {
-      if (user) {
-        // this is coming from userDao.getUser()
-        const userInfo = {
-          id: user.id,
-          email: user.username.trim().toLowerCase(),
-          admin: user.admin,
-          name : user.name
-        };
-        const token = jwt.sign(userInfo, jwtSecret, { algorithm: "none" });
-
-        return res
-          .cookie("access_token", token, {
-            httpOnly: true,
-          })
-          .status(200)
-          .json(user);
-      }else {
-        res.status(400).json({ error: " The Email or Password is wrong " });
-      }
-    })
-    .catch((err) => {
-      return err;
-    });
-}); */
-
-// POST /register
-// sign up
-app.post("/api/register", async function (req, res) {
-  const credentials = Object.assign({}, req.body);
-  let valid = true;
-  const emaiTest = new RegExp(
-    /^([a-zA-Z0-9])(([\-.]|[_]+)?([a-zA-Z0-9]+))*(@){1}[a-z0-9]+[.]{1}(([a-z]{2,3})|([a-z]{2,3}[.]{1}[a-z]{2,3}))$/
-  );
-  if (!credentials.username) {
-    valid = false;
-  } else if (!emaiTest.test(credentials.username)) {
-    valid = false;
-  } else if (!credentials.name) {
-    valid = false;
   }
-
-  const testPassword = new RegExp(credentials.name);
-  const match = testPassword.test(credentials.password);
-
-  if (credentials.password.length === 0) {
-    valid = false;
-  } else if (match) {
-    valid = false;
-  }
-
-  if (valid == false) {
-    return res.status(400).json({ error: "Error in User info." });
-  }
-  /*   const credentials = {
-    name: req.body.name,
-    username: req.body.username.trim().toLowerCase(),
-    password: hashedPassword,
-    admin: req.body.admin,
-  }; */
-  try {
-    const id = await registration(credentials);
-    console.log("HERE ID", id);
-    if (id == null) {
-      return res.status(400).json({ error: "User already exists." });
-    } else {
-      const userInfo = {
-        id: id,
-        email: req.body.username,
-        admin: req.body.admin,
-        name: req.body.name,
-      };
-
-      const user = {
-        id: id,
-        username: req.body.username,
-        name: req.body.name,
-        admin: req.body.admin,
-      };
-
-      const token = jwt.sign(userInfo, jwtSecret, { algorithm: "none" });
-
-      return res
-        .cookie("access_token", token, {
-          httpOnly: true,
-          maxAge: 1000*60*60*24*7 /* 7 days */
-        })
-        .status(200)
-        .json(user);
-    }
-  } catch (err) {
-    console.log(err);
-    res
-      .status(500)
-      .json({ error: "Unable to register the user into the database." });
-  }
-});
+);
 
 // DELETE /sessions/current
 // logout
@@ -222,8 +177,6 @@ app.get("/api/sessions/current", isLoggedIn, (req, res) => {
   const token = req.cookies.access_token;
   
   if (token) {
-    console.log("HERE")
-    let decoded = jwt.decode(token, jwtSecret);
     if (decoded.id) {
       const user = {
         name: decoded.name,
@@ -232,16 +185,7 @@ app.get("/api/sessions/current", isLoggedIn, (req, res) => {
         admin: decoded.admin,
       };
       return res.status(200).json(user);
-      /* getUserById(id)
-        .then((user) => {
-          return res.status(200).json(user);
-        })
-        .catch((err) => {
-          console.log(err);
-          return res.status(500).json({ error: "Internal Server Error" });
-        });
-      // Add a return statement here to prevent further execution
-      return; */
+      
     }
   }
   return res.status(401).json({ error: "No previous session established !" });

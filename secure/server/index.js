@@ -10,7 +10,6 @@ const crypto = require("crypto");
 const {
   isLoggedIn,
   isAdmin,
-  login,
   registration,
 } = require("./lib/auth-middleware.js"); // auth middleware
 const cors = require("cors");
@@ -102,10 +101,11 @@ app.post("/api/sessions", async (req, res) => {
         } else {
           const userInfo = {
             id: row.id,
+             createdAt: new Date().toISOString() 
           };
           const user = await getUserById(row.id);
           if (user) {
-            const token = jwt.sign(userInfo, jwtSecret);
+            const token = jwt.sign(userInfo, jwtSecret,{expiresIn:'7d'});
 
             return res
               .cookie("access_token", token, {
@@ -162,12 +162,13 @@ app.post(
       } else {
         const userInfo = {
           id: id,
+          createdAt: new Date().toISOString() 
         };
 
         const user = await getUserById(id);
 
         if (user) {
-          const token = jwt.sign(userInfo, jwtSecret);
+          const token = jwt.sign(userInfo, jwtSecret,{expiresIn:'7d'});
 
           return res
             .cookie("access_token", token, {
