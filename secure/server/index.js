@@ -2,7 +2,7 @@
 
 require("../typedefs");
 
-const fs = require("fs").promises;
+
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
@@ -496,7 +496,7 @@ app.get("/api/users", isAdmin, (req, res) => {
 // search images according to a query parameter
 app.get("/api/images", isLoggedIn, (req, res) => {
   const search = req.query.search.replace(/\s+/g, "-");
-  fs.readdir("static")
+  fs.promises.readdir("static")
     .then(fileNames => fileNames.filter(file => file.includes(search)))
     .then(searchResults => res.json(searchResults))
     .catch(() => res.status(500).json({ error: "An error occurred while searching for images." }));
