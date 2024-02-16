@@ -239,6 +239,7 @@ app.get("/api/pages/:id", (req, res) => {
   const token = req.cookies.access_token;
   let user = undefined;
   if (token) {
+    if(jwt.verify(token,jwtSecret))
     user = jwt.decode(token, jwtSecret);
   }
   getPageWithBlocks(page_id, user)
@@ -261,6 +262,7 @@ app.get("/api/pageclick", (req, res) => {
   const token = req.cookies.access_token;
   let user = undefined;
   if (token) {
+    if(jwt.verify(token,jwtSecret))
     user = jwt.decode(token, jwtSecret);
   }
 
@@ -350,6 +352,7 @@ async function validPageID(req, res, next) {
   const token = req.cookies.access_token;
   let user = undefined;
   if (token) {
+    if(jwt.verify(token,jwtSecret))
     user = jwt.decode(token, jwtSecret);
   }
 
