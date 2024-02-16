@@ -54,6 +54,7 @@ export default function RegisterForm({ onRegister }) {
 
   const { state } = useLocation();
   const prevLocation = state?.prevLocation;
+  
 
   const doSignUp = (credentials) => {
     setLoading(true);
@@ -63,7 +64,7 @@ export default function RegisterForm({ onRegister }) {
         setError("");
         setUser(user);
       })
-      .catch((err) => setError(err))
+      .catch((err) => handleError(err))
       .finally(() => setLoading(false));
   };
 
@@ -86,11 +87,16 @@ export default function RegisterForm({ onRegister }) {
 
     const nameTest = name.toLowerCase().trim();
   const passwordTest = password.toLowerCase().trim();
-
-    
+    const PASSWORD_REGEX = /^(?=.*[!@#$%^&*()\-_=+{};:,<.>])(?=.*[a-zA-Z0-9]).{8,}$/;
 
     if (password.length === 0) {
       setPasswordError("Please insert a password.");
+      valid = false;
+    } else if (password.length < 8) {
+      setPasswordError("Password must be at least 8 characters long.");
+      valid = false;
+    } else if (!PASSWORD_REGEX.test(password)) {
+      setPasswordError("Password must contain at least one special character.");
       valid = false;
     } else if (passwordTest.includes(nameTest)) {
       setPasswordError("Do not include name in password.");
@@ -143,7 +149,7 @@ export default function RegisterForm({ onRegister }) {
                 autoFocus
               />
               <Form.Control.Feedback type="invalid">
-                {usernameError}
+                {nameError}
               </Form.Control.Feedback>
             </Form.Group>
             <Form.Group controlId="username" className="my-3">

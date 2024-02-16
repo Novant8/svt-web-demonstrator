@@ -47,15 +47,10 @@ exports.login = async (credentials) => {
  * @param {Express.NextFunction} next
  */
 exports.isLoggedIn = (req, res, next) => {
-  const token = req.cookies.access_token
-  if (token){
-    if (jwt.verify(token,jwtSecret)) {
-      return next();
-    }
-  
-  }
- 
-  return res.status(401).json({ error: "Not authenticated" });
+  if(req.user)
+    next() 
+  else
+    res.status(401).json({ error: "Not authenticated" });
 };
 
 /**
@@ -77,3 +72,22 @@ exports.isAdmin = (req, res, next) => {
   
   return res.status(401).json({ error: "Not authenticated" });
 };
+
+exports.decodeUserJWT = (req, _res, next) => {
+  const token = req.cookies.access_token
+  let userID  = undefined;
+  
+  if (token){
+    if (jwt.verify(token,jwtSecret)) {
+      const decoded = jwt.decode(token);
+      userID = decoded.id
+    }
+  }
+    
+  if(typeof userID !== 'undefined')
+    userDao.getUserById(userID)
+      .then(user => req.user = user)
+      .then(() => next());
+  else
+    next();
+}

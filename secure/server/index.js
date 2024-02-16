@@ -12,6 +12,7 @@ const {
   isLoggedIn,
   isAdmin,
   registration,
+  decodeUserJWT,
 } = require("./lib/auth-middleware.js"); // auth middleware
 const cors = require("cors");
 const morgan = require("morgan");
@@ -36,7 +37,6 @@ const {
 } = require("./lib/user-dao.js");
 const { parsePageXML } = require("./lib/xml.js");
 const { downloadBlockImages } = require("./lib/image-upload.js");
-const { exec } = require("node:child_process");
 const sqlite3 = require("sqlite3").verbose();
 const bcrypt = require("bcrypt");
 require("dotenv").config();
@@ -65,7 +65,8 @@ app
     })
   )
   .use(express.static("static"))
-  .use(cookieParser());
+  .use(cookieParser())
+  .use(decodeUserJWT);
 
 /*** Users APIs ***/
 
@@ -198,18 +199,7 @@ app.delete("/api/sessions/current", (req, res) => {
 // GET /sessions/current
 // check whether the user is logged in or not
 app.get("/api/sessions/current", isLoggedIn, async (req, res) => {
-  const token = req.cookies.access_token;
-  if (token) {
-    let decoded = jwt.decode(token, jwtSecret);
-    if (decoded.id) {
-      const user = await getUserById(decoded.id);
-
-      if (user) {
-        return res.status(200).json(user);
-      }
-    }
-  }
-  return res.status(401).json({ error: "No previous session established !" });
+  res.status(200).json(req.user);
 });
 
 /*** Page fetching ***/
@@ -217,12 +207,7 @@ app.get("/api/sessions/current", isLoggedIn, async (req, res) => {
 // GET /pages
 // list all pages
 app.get("/api/pages", (req, res) => {
-  const token = req.cookies.access_token;
-  let user = undefined;
-  if (token) {
-    user = jwt.decode(token, jwtSecret);
-  }
-  listPages(user, req.query.search)
+  listPages(req.user, req.query.search)
     .then((pages) => res.json(pages))
     .catch((err) => {
       console.error(err);
@@ -236,14 +221,7 @@ app.get("/api/pages", (req, res) => {
 // retrieve information (including blocks) of single page
 app.get("/api/pages/:id", (req, res) => {
   const page_id = req.params.id;
-  console.log("PageID", page_id);
-  const token = req.cookies.access_token;
-  let user = undefined;
-  if (token) {
-    if(jwt.verify(token,jwtSecret))
-    user = jwt.decode(token, jwtSecret);
-  }
-  getPageWithBlocks(page_id, user)
+  getPageWithBlocks(page_id, req.user)
     .then((page) => {
       if (typeof page === "undefined")
         res.status(404).json({ error: "Page not found!" });
@@ -260,19 +238,13 @@ app.get("/api/pages/:id", (req, res) => {
 // GET /pageclick
 // log page visit before redirecting user
 app.get("/api/pageclick", (req, res) => {
-  const token = req.cookies.access_token;
-  let user = undefined;
-  if (token) {
-    if(jwt.verify(token,jwtSecret))
-    user = jwt.decode(token, jwtSecret);
-  }
-
+  console.log("hello");
   // Log the user's click in the database. No need to wait for the operation to end before redirecting.
   const pageId = parseInt(req.query.redirect);
   if(isNaN(pageId))
     return res.redirect("http://localhost:5173/front");
   
-  logUserPageClick(user, pageId).catch(console.error);
+  logUserPageClick(req.user, pageId).catch(console.error);
 
   res.redirect(`http://localhost:5173/pages/${pageId}`);
 });
@@ -295,9 +267,9 @@ const addValidationChain = [
   check("title").isString().notEmpty(),
   check("publicationDate").isDate({ format: "YYYY-MM-DD" }).optional(),
   check("author")
-    .isInt() //TODO
-    /* .custom((author, { req }) => author === req.user.id || req.user.admin)
-    .withMessage("Only admins can set authors as a different user.") */
+    .isInt()
+    .custom((author, { req }) => author === req.user.id || req.user.admin)
+    .withMessage("Only admins can set authors as a different user.")
     .custom(async (author) => {
       if (!(await isRegisteredUser(author)))
         throw new Error("The author must be a registed user.");
@@ -330,9 +302,7 @@ app.post(
   downloadBlockImages,
   (req, res) => {
     let page = req.body;
-    const token = req.cookies.access_token;
-    let user = jwt.decode(token, jwtSecret);
-    const author = page.author || user.id;
+    const author = page.author || req.user.id;
     createPage(page, author)
       .then(({ pageId: id, blockIDs: blocks }) => {
         res.status(201).json({ id, blocks });
@@ -353,14 +323,7 @@ app.post(
  */
 async function validPageID(req, res, next) {
   const pageId = parseInt(req.params.id);
-  const token = req.cookies.access_token;
-  let user = undefined;
-  if (token) {
-    if(jwt.verify(token,jwtSecret))
-    user = jwt.decode(token, jwtSecret);
-  }
-
-  if (typeof (await getPage(pageId, user)) === "undefined")
+  if (typeof (await getPage(pageId, req.user)) === "undefined")
     res.status(404).json({ error: "Page not found!" });
   else next();
 }
@@ -404,10 +367,8 @@ app.put(
   (req, res) => {
     let id = parseInt(req.params.id);
     let page = { ...req.body, id };
-    const token = req.cookies.access_token;
-    let user = jwt.decode(token, jwtSecret);
-    const author = page.author || user.id;
-    editPage(page, author, user)
+    const author = page.author || req.user.id;
+    editPage(page, author, req.user)
       .then(({ changes, blocks }) => {
         if (changes) res.json({ blocks }).end();
         else
@@ -427,11 +388,7 @@ app.put(
 // delete an existing page
 app.delete("/api/pages/:id", isLoggedIn, validPageID, (req, res) => {
   const page_id = parseInt(req.params.id);
-
-  const token = req.cookies.access_token;
-  let user = jwt.decode(token, jwtSecret);
-
-  deletePage(page_id, user)
+  deletePage(page_id, req.user)
     .then((deleted_rows) => {
       if (deleted_rows > 0) res.status(204).end();
       else
@@ -494,7 +451,7 @@ app.get("/api/users", isAdmin, (req, res) => {
 
 // GET /images
 // search images according to a query parameter
-app.get("/api/images", isLoggedIn, (req, res) => {
+app.get("/api/images", isLoggedIn,  (req, res) => {
   const search = req.query.search.replace(/\s+/g, "-");
   fs.promises.readdir("static")
     .then(fileNames => fileNames.filter(file => file.includes(search)))
