@@ -9,34 +9,22 @@ const jwtSecret = "mydfs68jlk5620jds7akl8m127a8sdh168hj";
 exports.registration = async (credentials) => {
   const username = credentials.username;
   try {
-    const response = await userDao.getUserByEmail(username)
-    if (response){
-      return null
-    } else{
-      const id = await userDao.registerUser(credentials)
-      if ( typeof id === "number"){
-        return id; 
-      }else {
-        return null; 
+    const response = await userDao.getUserByEmail(username);
+    if (response) {
+      return null;
+    } else {
+      const id = await userDao.registerUser(credentials);
+      if (typeof id === "number") {
+        return id;
+      } else {
+        throw null;
       }
     }
   } catch (error) {
-    console.log(error)
+   throw error;
   }
-  
 };
 
-exports.login = async (credentials) => {
-  const password = credentials.password;
-  const username = credentials.username;
-
-  return await userDao
-    .getUser(username, password)
-    .then((user) => {
-      return user;
-    })
-    .catch((err) => console.log(err));
-};
 
 /**
  * Middleware that checks if a given request is coming from an authenticated user
@@ -45,7 +33,10 @@ exports.login = async (credentials) => {
  * @param {Express.NextFunction} next
  */
 exports.isLoggedIn = (req, res, next) => {
-  if (req.cookies.access_token) {
+  const token = req.cookies.access_token;
+  const decode = jwt.decode(token, jwtSecret);
+  console.log("HERE",decode)
+  if (token) {
     return next();
   }
 

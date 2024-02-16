@@ -23,7 +23,7 @@ export default function LoginForm({ onLogin }) {
     }
 
     /* Passsword state */
-    const [ password, _setPassword ]            = useState('password');
+    const [ password, _setPassword ]            = useState('password!');
     const [ passwordError, setPasswordError ]   = useState('');
     const setPassword = (password) => {
         _setPassword(password);

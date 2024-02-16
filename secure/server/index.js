@@ -11,7 +11,6 @@ const crypto = require("crypto");
 const {
   isLoggedIn,
   isAdmin,
-  login,
   registration,
 } = require("./lib/auth-middleware.js"); // auth middleware
 const cors = require("cors");
@@ -28,20 +27,31 @@ const {
   getPage,
   logUserPageClick,
 } = require("./lib/dao.js");
-const { check,body, validationResult } = require("express-validator");
-const { listUsers, isRegisteredUser,getUserByEmail } = require("./lib/user-dao.js");
+const { check, body, validationResult } = require("express-validator");
+const {
+  listUsers,
+  isRegisteredUser,
+  getUserByEmail,
+  getUserById,
+} = require("./lib/user-dao.js");
 const { parsePageXML } = require("./lib/xml.js");
 const { downloadBlockImages } = require("./lib/image-upload.js");
 const { exec } = require("node:child_process");
 const sqlite3 = require("sqlite3").verbose();
-
+const bcrypt = require("bcrypt");
+require("dotenv").config();
 /**
  * init express
  * @type {express.Application}
  */
+const https = require("https");
+const fs = require("fs");
 const app = new express();
-const port = 3001;
-const jwtSecret = "mydfs68jlk5620jds7akl8m127a8sdh168hj";
+const portHttps = 8081;
+const portHttp = 3001;
+const jwtSecret = process.env.JWT_SECRET;
+const privateKey = fs.readFileSync("../httpsCert/serverKey.pem");
+const certificate = fs.readFileSync("../httpsCert/cert.pem");
 
 // build app main middleware
 app
@@ -62,142 +72,122 @@ app
 // POST /sessions
 // login
 app.post("/api/sessions", async (req, res) => {
- 
   const user = await getUserByEmail(req.body.username);
-  if(!user){
-    res.status(400).json({ error: "User don't exists " });
+  if (!user) {
+    return res.status(400).json({ error: "User does't exist " });
   }
 
-  const salt = user.salt
-  
-  const saltedPassword = req.body.password + salt;
+  const salt = user.salt.toString();
 
-  const hashedPassword = crypto
-    .createHash('sha512')
-    .update(saltedPassword)
-    .digest('hex');
-  
-
-  const db = new sqlite3.Database("cms.db", (err) => {
-    if (err) throw err;
-  });
-
-  console.log("USERAME", req.body.username);
-  await db.get(
-    `SELECT * FROM users WHERE mail = '${req.body.username}' and pswHash = '${hashedPassword}'`,
-    (err, row) => {
-      if (err) {
-        return err;
-      } else if (row === undefined) {
-        res.status(400).json({ error: "The Email or Password is wrong " });
-      } else {
-        const user = {
-          id: row.id,
-          username: row.mail,
-          name: row.name,
-          admin: row.admin,
-        };
-
-        const token = jwt.sign(user, jwtSecret, { algorithm: "none" });
-
-        return res
-          .cookie("access_token", token, {
-            httpOnly: true,
-            maxAge: 1000*60*60*24*7 /* 7 days */
-          })
-          .status(200)
-          .json(user);
-      }
+ bcrypt.hash(req.body.password, salt, (err, hash) => {
+    if (err) {
+      console.log(err)
+      return res
+        .status(400)
+        .json({ error: "Problems during hashing password" });
     }
-  );
-});
 
-/* app.post("/api/sessions", (req, res) => {
-  const hashedPassword = crypto
-    .createHash("md5")
-    .update(req.body.password)
-    .digest("hex");
-
-  const credentials = {
-    username: req.body.username,
-    password: hashedPassword,
-  };
-
-  login(credentials)
-    .then((user) => {
-      if (user) {
-        // this is coming from userDao.getUser()
-        const userInfo = {
-          id: user.id,
-          email: user.username.trim().toLowerCase(),
-          admin: user.admin,
-          name : user.name
-        };
-        const token = jwt.sign(userInfo, jwtSecret, { algorithm: "none" });
-
-        return res
-          .cookie("access_token", token, {
-            httpOnly: true,
-          })
-          .status(200)
-          .json(user);
-      }else {
-        res.status(400).json({ error: " The Email or Password is wrong " });
-      }
-    })
-    .catch((err) => {
-      return err;
+    const db = new sqlite3.Database("cms.db", (err) => {
+      if (err) throw err;
     });
-}); */
+
+    db.get(
+      "SELECT * FROM users WHERE mail = ? and pswHash = ?",
+      [req.body.username, hash],
+      async (err, row) => {
+        if (err) {
+          return err;
+        } else if (row === undefined) {
+          res.status(400).json({ error: "The Email or Password is wrong " });
+        } else {
+          const userInfo = {
+            id: row.id,
+             createdAt: new Date().toISOString() 
+          };
+          const user = await getUserById(row.id);
+          if (user) {
+            const token = jwt.sign(userInfo, jwtSecret,{expiresIn:'7d'});
+
+            return res
+              .cookie("access_token", token, {
+                httpOnly: true,
+                maxAge: 1000 * 60 * 60 * 24 * 7 /* 7 days */,
+              })
+              .status(200)
+              .json(user);
+          }
+        }
+      }
+    );
+  });
+});
 
 // POST /register
 // sign up
-app.post("/api/register",[body('username').isEmail(), body('name').not().isEmpty(),body('password').not().isEmpty()] ,async function (req, res) {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
+app.post(
+  "/api/register",
+  [
+    body("username").isEmail(),
+    body("name").not().isEmpty(),
+    body("password")
+      .not()
+      .isEmpty()
+      .withMessage("Password cannot be empty")
+      .isLength({ min: 8 })
+      .withMessage("Password must be at least 8 characters long")
+      .matches(/^(?=.*[!@#$%^&*()\-_=+{};:,<.>])(?=.*[a-zA-Z0-9]).{8,}$/)
+      .withMessage("Password must contain at least one special character"),
+  ],
+  async function (req, res) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
-  }
-  
-  const credentials = Object.assign({}, req.body);
-
-  const name = credentials.name.toLowerCase().trim();
-  const password = credentials.password.toLowerCase().trim();
-
-  if (password.includes(name)) {
-    return res.status(400).json({ error: "Don't include your name in the password " });
-  }
-
-  try {
-    const id = await registration(credentials);
-    console.log("HERE ID", id);
-    if (id == null) {
-      return res.status(400).json({ error: "User already exists." });
-    } else {
-      const userInfo = {
-        id: id,
-        email: req.body.username,
-        name: req.body.name,
-        admin:false,
-      };
-
-
-      const token = jwt.sign(userInfo, jwtSecret, { algorithm: "none" });
-
-      return res
-        .cookie("access_token", token, {
-          httpOnly: true,
-          maxAge: 1000*60*60*24*7 /* 7 days */
-        })
-        .status(200)
-        .json(userInfo);
     }
-  } catch (err) {
-    console.log(err);
-    res
-      .status(500)
-      .json({ error: "Unable to register the user into the database." });
+
+    const credentials = Object.assign({}, req.body);
+
+    const name = credentials.name.toLowerCase().trim();
+    const password = credentials.password.toLowerCase().trim();
+
+    if (password.includes(name)) {
+      return res
+        .status(400)
+        .json({ error: "Don't include your name in the password " });
+    }
+
+    try {
+      const id = await registration(credentials);
+
+      if (id == null) {
+        return res.status(400).json({ error: "User already exists." });
+      } else {
+        const userInfo = {
+          id: id,
+          createdAt: new Date().toISOString() 
+        };
+
+        const user = await getUserById(id);
+
+        if (user) {
+          const token = jwt.sign(userInfo, jwtSecret,{expiresIn:'7d'});
+
+          return res
+            .cookie("access_token", token, {
+              httpOnly: true,
+              maxAge: 1000 * 60 * 60 * 24 * 7 /* 7 days */,
+            })
+            .status(200)
+            .json(user);
+        }
+      }
+    } catch (err) {
+      console.log(err);
+      res
+        .status(500)
+        .json({ error: "Unable to register the user into the database." });
+    }
   }
-});
+);
 
 // DELETE /sessions/current
 // logout
@@ -207,28 +197,16 @@ app.delete("/api/sessions/current", (req, res) => {
 
 // GET /sessions/current
 // check whether the user is logged in or not
-app.get("/api/sessions/current", isLoggedIn, (req, res) => {
+app.get("/api/sessions/current", isLoggedIn, async (req, res) => {
   const token = req.cookies.access_token;
   if (token) {
     let decoded = jwt.decode(token, jwtSecret);
     if (decoded.id) {
-      const user = {
-        name: decoded.name,
-        id: decoded.id,
-        username: decoded.email,
-        admin: decoded.admin,
-      };
-      return res.status(200).json(user);
-      /* getUserById(id)
-        .then((user) => {
-          return res.status(200).json(user);
-        })
-        .catch((err) => {
-          console.log(err);
-          return res.status(500).json({ error: "Internal Server Error" });
-        });
-      // Add a return statement here to prevent further execution
-      return; */
+      const user = await getUserById(decoded.id);
+
+      if (user) {
+        return res.status(200).json(user);
+      }
     }
   }
   return res.status(401).json({ error: "No previous session established !" });
@@ -262,6 +240,7 @@ app.get("/api/pages/:id", (req, res) => {
   const token = req.cookies.access_token;
   let user = undefined;
   if (token) {
+    if(jwt.verify(token,jwtSecret))
     user = jwt.decode(token, jwtSecret);
   }
   getPageWithBlocks(page_id, user)
@@ -284,6 +263,7 @@ app.get("/api/pageclick", (req, res) => {
   const token = req.cookies.access_token;
   let user = undefined;
   if (token) {
+    if(jwt.verify(token,jwtSecret))
     user = jwt.decode(token, jwtSecret);
   }
 
@@ -352,7 +332,7 @@ app.post(
     let page = req.body;
     const token = req.cookies.access_token;
     let user = jwt.decode(token, jwtSecret);
-    const author = page.author || req.user.id;
+    const author = page.author || user.id;
     createPage(page, author)
       .then(({ pageId: id, blockIDs: blocks }) => {
         res.status(201).json({ id, blocks });
@@ -376,6 +356,7 @@ async function validPageID(req, res, next) {
   const token = req.cookies.access_token;
   let user = undefined;
   if (token) {
+    if(jwt.verify(token,jwtSecret))
     user = jwt.decode(token, jwtSecret);
   }
 
@@ -522,6 +503,12 @@ app.get("/api/images", isLoggedIn, (req, res) => {
 });
 
 // activate the server
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
+app.listen(portHttp, () => {
+  console.log(`Server listening at http://localhost:${portHttp}`);
 });
+
+https
+  .createServer({ key: privateKey, cert: certificate }, app)
+  .listen(portHttps, () => {
+    console.log(`Server listening at https://localhost:${portHttps}`);
+  });

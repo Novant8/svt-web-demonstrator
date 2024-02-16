@@ -5,7 +5,7 @@ Content-Type: application/json
 
 {
     "username": "mario@example.org' --",
-    "password": "passwossrd"
+    "password": "UknownPassword"
     
 }
 ###REGISTER USING EVIL REGEX

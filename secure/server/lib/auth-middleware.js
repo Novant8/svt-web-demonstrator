@@ -2,9 +2,10 @@
 
 const jwt = require("jsonwebtoken");
 const userDao = require("./user-dao"); // module for accessing the user info in the DB
+require("dotenv").config()
 
 //JSON WEB TOKEN SECRET
-const jwtSecret = "mydfs68jlk5620jds7akl8m127a8sdh168hj";
+const jwtSecret =process.env.JWT_SECRET;
 
 exports.registration = async (credentials) => {
   const username = credentials.username;
@@ -14,6 +15,7 @@ exports.registration = async (credentials) => {
       return null
     } else{
       const id = await userDao.registerUser(credentials)
+      console.log("ID",id)
       if ( typeof id === "number"){
         return id; 
       }else {
@@ -45,10 +47,14 @@ exports.login = async (credentials) => {
  * @param {Express.NextFunction} next
  */
 exports.isLoggedIn = (req, res, next) => {
-  if (req.cookies.access_token) {
-    return next();
+  const token = req.cookies.access_token
+  if (token){
+    if (jwt.verify(token,jwtSecret)) {
+      return next();
+    }
+  
   }
-
+ 
   return res.status(401).json({ error: "Not authenticated" });
 };
 
@@ -60,12 +66,14 @@ exports.isLoggedIn = (req, res, next) => {
  */
 exports.isAdmin = (req, res, next) => {
   const token = req.cookies.access_token;
-  if (token) {
-    let decoded = jwt.decode(token, jwtSecret);
-    if (decoded.id) return next();
-
-    return res.status(401).json({ error: "You are not the admin !" });
+  if(token){
+    if (jwt.verify(token,jwtSecret)) {
+      let decoded = jwt.decode(token, jwtSecret);
+      if (decoded.id) return next();
+  
+      return res.status(401).json({ error: "You are not the admin !" });
+    }
   }
-
+  
   return res.status(401).json({ error: "Not authenticated" });
 };

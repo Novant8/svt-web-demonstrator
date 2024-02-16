@@ -15,7 +15,7 @@ Content-Type: application/json
 
 {
     "username": "mario@example.org' --",
-    "password": "passwossrd"
+    "password": "passwordddddd"
     
 }
 ###REGISTER USING EVIL REGEX
@@ -35,9 +35,9 @@ Host: localhost:3001
 Content-Type: application/json
 
 {
-    "name": "test4",
-    "username": "test4@example.org",
-    "password": "password",
+    "name": "test2",
+    "username": "test2@example.org",
+    "password": "password123#",
     "admin":true 
 }
 ### LOGIN AS USER

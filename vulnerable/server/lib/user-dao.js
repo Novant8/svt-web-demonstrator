@@ -88,34 +88,7 @@ exports.getUserByEmail = (email) => {
   });
 };
 
-/**
- * Retrieves user info from the database, given their credentials
- * @param {string} email    - Email of the user
- * @param {string} password - Cleartext password of the user
- * @returns {Promise<User | false>} - Promise that resolves with the user's information. Resolves with `false` if information is incorrect
- */
-exports.getUser = (email, password) => {
-  return new Promise((resolve, reject) => {
-    const sql = "SELECT * FROM users WHERE mail = ?";
-    db.get(sql, [email], (err, row) => {
-      if (err) {
-        reject(err);
-      } else if (row === undefined) {
-        resolve(false);
-      } else {
-        const user = {
-          id: row.id,
-          username: row.mail,
-          name: row.name,
-          admin: row.admin,
-        };
-        console.log("COMPARE", password, row.pswHash);
-        if (password !== row.pswHash) resolve(false);
-        else resolve(user);
-      }
-    });
-  });
-};
+
 
 /**
  * Lists all the users
