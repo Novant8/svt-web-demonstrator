@@ -77,11 +77,13 @@ exports.decodeUserJWT = (req, _res, next) => {
   const token = req.cookies.access_token
   let userID  = undefined;
   
-  if (typeof token !== 'undefined'){
-    if (jwt.verify(token,jwtSecret)) {
-      const decoded = jwt.decode(token);
-      userID = decoded.id
-    }
+  if (typeof token !== 'undefined') {
+    try {
+      if (jwt.verify(token,jwtSecret)) {
+        const decoded = jwt.decode(token);
+        userID = decoded.id
+      }
+    } catch { /* Do nothing */ }
   }
     
   if(typeof userID !== 'undefined')
