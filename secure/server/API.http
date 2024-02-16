@@ -5,7 +5,7 @@ Content-Type: application/json
 
 {
     "username": "sofia@example.org",
-    "password": "password"
+    "password": "password!"
     
 }
 ### LOGIN AS ADMIN
