@@ -61,7 +61,7 @@ exports.isLoggedIn = (req, res, next) => {
  */
 exports.isAdmin = (req, res, next) => {
   const token = req.cookies.access_token;
-  if(typeof userID !== 'undefined'){
+  if(typeof token !== 'undefined'){
     if (jwt.verify(token,jwtSecret)) {
       let decoded = jwt.decode(token, jwtSecret);
       if (decoded.id) return next();
@@ -77,7 +77,7 @@ exports.decodeUserJWT = (req, _res, next) => {
   const token = req.cookies.access_token
   let userID  = undefined;
   
-  if (typeof userID !== 'undefined'){
+  if (typeof token !== 'undefined'){
     if (jwt.verify(token,jwtSecret)) {
       const decoded = jwt.decode(token);
       userID = decoded.id

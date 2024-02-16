@@ -4,7 +4,7 @@ Host: localhost:3001
 Content-Type: application/json
 
 {
-    "username": "sofia@example.org",
+    "username": "luigi@example.org",
     "password": "password!"
     
 }
