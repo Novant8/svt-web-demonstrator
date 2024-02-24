@@ -245,7 +245,7 @@ function ImageGrid({ images, onChange }) {
                             <Card className="image-select-card" onClick={() => onChange(img)}>
                                 <Card.Img
                                     className="img-fluid"
-                                    src={`http://localhost:3001/${img}`}
+                                    src={`http://localhost:3002/${img}`}
                                     alt={img}
                                 />
                             </Card>
@@ -312,7 +312,7 @@ function ExistingImageForm({ value, disabled, onChange }) {
                     <Row className="justify-content-center mb-3">
                         <Col xl={6} lg={7} md={8}>
                             <Card border="light">
-                                <Card.Img className="img-fluid" src={`http://localhost:3001/${value.fileName}`} />
+                                <Card.Img className="img-fluid" src={`http://localhost:3002/${value.fileName}`} />
                             </Card>
                         </Col>
                     </Row>

@@ -48,7 +48,7 @@ const https = require("https");
 const fs = require("fs");
 const app = new express();
 const portHttps = 8081;
-const portHttp = 3001;
+const portHttp = 3002;
 const jwtSecret = process.env.JWT_SECRET;
 const privateKey = fs.readFileSync("../httpsCert/serverKey.pem");
 const certificate = fs.readFileSync("../httpsCert/cert.pem");
@@ -60,7 +60,7 @@ app
   .use(express.json())
   .use(
     cors({
-      origin: "http://localhost:5173",
+      origin: "http://localhost:5174",
       credentials: true,
     })
   )
@@ -242,11 +242,11 @@ app.get("/api/pageclick", (req, res) => {
   // Log the user's click in the database. No need to wait for the operation to end before redirecting.
   const pageId = parseInt(req.query.redirect);
   if(isNaN(pageId))
-    return res.redirect("http://localhost:5173/front");
+    return res.redirect("http://localhost:5174/front");
   
   logUserPageClick(req.user, pageId).catch(console.error);
 
-  res.redirect(`http://localhost:5173/pages/${pageId}`);
+  res.redirect(`http://localhost:5174/pages/${pageId}`);
 });
 
 /*** Page creation/modification/deletion ***/

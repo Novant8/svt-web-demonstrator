@@ -155,7 +155,7 @@ export default function PageForm({ onAdd, onEdit }) {
                 if(block.type === 'image') {
                     switch(getImgBlockType(block)) {
                         case 'existing':
-                            return { ...block, content: `http://localhost:3001/${block.content.fileName}` };
+                            return { ...block, content: `http://localhost:3002/${block.content.fileName}` };
                         case 'new_file':
                             return { ...block, content: URL.createObjectURL(block.content.file) };
                         case 'new_url':
