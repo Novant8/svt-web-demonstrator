@@ -175,7 +175,7 @@ app.delete("/api/sessions/current", (req, res) => {
 // check whether the user is logged in or not
 app.get("/api/sessions/current", isLoggedIn, (req, res) => {
   const token = req.cookies.access_token;
-  
+  const decoded = jwt.decode(token, jwtSecret);
   if (token) {
     if (decoded.id) {
       const user = {
