@@ -21,14 +21,14 @@ Pages have a title, a publication date and are made of multiple blocks. Blocks c
 ```
 svt-project/
 │
-├── secure/
-│   ├── client/     --Front-end managed by React, contains all application components plus the api.js file to contact the back-end 
-│   ├── httpsCert/  --Contains the self signed certificate and the private key associated with the certificate 
-│   └── server/     -- It contains the back-end of the application, managed by nodejs and Express. In this version, vulnerabilities have been fixed
+├── secure/         -- Contains the fixed version of the application, where the exploits listed below should not work.
+│   ├── client/     -- Front-end managed by React, contains all application components plus the api.js file to contact the back-end 
+│   ├── httpsCert/  -- Contains the self signed certificate and the private key associated with the certificate 
+│   └── server/     -- It contains the back-end of the application, managed by nodejs and Express.
 |
-├── vulnerable/
-│   ├── client/     --Front-end managed by React, contains all application components plus the api.js file to contact the back-end 
-│   └── server/     --It contains the back-end of the application, managed by nodejs and Express. There are approximately 20 vulnerabilities presented in the section below
+├── vulnerable/     -- Contains the vulnerable version of the application, where all the exploits listed below are working.
+│   ├── client/     -- Front-end managed by React, contains all application components plus the api.js file to contact the back-end 
+│   └── server/     -- Contains the back-end of the application, managed by nodejs and Express.
 |
 └── README.md
 ```
