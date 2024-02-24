@@ -87,7 +87,7 @@ Secure version:
     nc -lvp 4242
     ```
 2. Log-in as an [existing user](#existing-users).
-3. Go to `http://localhost:5173/pages/add` to add a new page.
+3. Click the "New page" button on the back-end to add a new page.
 4. Insert a title and a header.
 5. Enter the following HTML tag for a simple alert to appear:
     ```html
@@ -103,7 +103,7 @@ Secure version:
 ### CWE-79: Improper Neutralization of Input During Web Page Generation ("Cross-site Scripting", XSS) - DOM
 
 1. Log-in as an [existing user](#existing-users).
-2. Go to `http://localhost:5173/pages/add` to add a new page.
+2. Click the "New page" button on the back-end to add a new page.
 3. Insert a title and a header.
 4. Enter one of the HTML tags shown in the [CWE-79 (Stored)](#cwe-79-improper-neutralization-of-input-during-web-page-generation-cross-site-scripting-xss---stored) section.
 5. Click the "Show Preview" button.
@@ -212,7 +212,7 @@ Scan the server's open ports:
 
 Download an image from the local server:
 1. Log-in as an [existing user](#existing-users).
-2. Go to `http://localhost:5173/pages/add` to add a new page.
+2. Click the "New page" button on the back-end to add a new page.
 3. Insert a title and a header.
 4. Add an image block, set it to "Upload a new image" and "Download from an external URL", then input any file name and the following URL:
     ```
@@ -226,7 +226,7 @@ Download an image from the local server:
     nc -lvp 4242
     ```
 2. Log-in as an [existing user](#existing-users).
-3. Go to `http://localhost:5173/pages/add` to add a new page.
+3. Click the "New page" button on the back-end to add a new page.
 4. Insert a title and a header.
 5. Add an image block, set it to "Existing image" and then input the following string in the search query to show the contents of the server's `/etc/passwd` file:
     ```
@@ -241,7 +241,7 @@ Download an image from the local server:
 ### CWE-22: Improper Limitation of a Pathname to a Restricted Directory (’Path Traversal’)
 
 1. Log-in as an [existing user](#existing-users).
-2. Go to `http://localhost:5173/pages/add` to add a new page.
+2. Click the "New page" button on the back-end to add a new page.
 3. Insert a title and a header.
 4. Add an image block, set it to "Upload a new image" and either "Upload a file" or "Download from an external URL", then input any image/URL and set the file name to `../../../outside`.
 5. Look at the repository's contents. The image should have been saved in the repository's root.
