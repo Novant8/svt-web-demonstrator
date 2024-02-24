@@ -4,11 +4,11 @@ A simple React + Express web application for demonstrating main web vulnerabilit
 
 ## The web application
 
-This web application is a simple content management system (CMS) which allows a registered user to add pages (articles) which can be seen by other users. There are two sections:
+This web application is a simple content management system (CMS) that allows a registered user to add pages (articles) which can be seen by other users. There are two sections:
 * **Front-office**: this section can be seen by all users, logged-in or not.
-* **Back-office**: this section can only be seen by registered users. It can be considedered as a sort of control panel where users can add, edit or delete pages.
+* **Back-office**: this section can only be seen by registered users. It can be considered as a sort of control panel where users can add, edit or delete pages.
 
-Pages can be:
+Each page, depending on its publication date, can be:
 * **Published**: the page is visible in both the front-office and the back-office.
 * **Scheduled**: the page's publication is scheduled to a later date, before which the page is visible only in the back-office.
 * **Draft**: the page is visible only in the back-office, without a scheduled publication.
