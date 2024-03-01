@@ -59,12 +59,9 @@ export default function LoginForm({ onLogin }) {
         let valid = true;
 
         if(!username) {
-            setUsernameError("Please insert a username.");
+            setUsernameError("Please insert an email.");
             valid = false;
-        } else if(!validator.isEmail(username)) {
-            setUsernameError("Username is not a valid e-mail.");
-            valid = false;
-        }
+        } 
 
         if(password.length === 0) {
             setPasswordError("Please insert a password.");
@@ -100,7 +97,7 @@ export default function LoginForm({ onLogin }) {
                         <Form.Group controlId='username' className="my-3">
                             <Form.Label>Email</Form.Label>
                             <Form.Control
-                                type='email'
+                                type='text'
                                 value={username}
                                 isInvalid={!!usernameError}
                                 onChange={ev => setUsername(ev.target.value)}
