@@ -35,6 +35,7 @@ const {
   getUserByEmail,
   getUserById,
 } = require("./lib/user-dao.js");
+const sanitizeHTML = require("sanitize-html");
 const { parsePageXML } = require("./lib/xml.js");
 const { downloadBlockImages } = require("./lib/image-upload.js");
 const sqlite3 = require("sqlite3").verbose();
@@ -285,7 +286,6 @@ const addValidationChain = [
   check("blocks.*.type")
     .isIn(["header", "paragraph", "image"])
     .withMessage("Block type must be 'header', 'paragraph' or 'image'"),
-  check("blocks.*.content").isString().notEmpty(),
   check("blocks")
     .custom(
       (blocks) =>
@@ -294,7 +294,13 @@ const addValidationChain = [
     )
     .withMessage(
       "The page must contain at least one header and another type of block."
-    ),
+    )
+    .customSanitizer(blocks => blocks.map(block => {
+      if(block.type === 'paragraph')
+        return { ...block, content: sanitizeHTML(block.content) };
+      return block;
+    })),
+    check("blocks.*.content").isString().notEmpty()
 ];
 
 // POST /pages

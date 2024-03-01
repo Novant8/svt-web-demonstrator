@@ -29,6 +29,7 @@
     "passport": "^0.6.0",
     "passport-local": "^1.0.0",
     "request-filtering-agent": "^2.0.1",
+    "sanitize-html": "^2.12.1",
     "sqlite3": "^5.1.6",
     "uuid": "^9.0.1"
   }

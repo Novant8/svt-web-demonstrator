@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { TODAY, longDate } from '../lib/date'
 import '../../../typedefs'
-import DOMPurify from 'dompurify'
+import sanitizeHTML from 'sanitize-html'
 
 import { getPageDetails } from '../lib/api'
 
@@ -179,7 +179,7 @@ function HeaderBlock({ content }) {
 }
 
 function ParagraphBlock({ content }) {
-    return <div className="paragraph-block" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
+    return <div className="paragraph-block" dangerouslySetInnerHTML={{ __html: sanitizeHTML(content) }} />
 }
 
 function ImageBlock({ url }) {
