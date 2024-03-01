@@ -21,6 +21,8 @@ Pages have a title, a publication date and are made of multiple blocks. Blocks c
 ```
 svt-project/
 │
+├── exploit         -- Contains scripts and extra material used for various exploits. 
+|
 ├── secure/         -- Contains the fixed version of the application, where the exploits listed below should not work.
 │   ├── client/     -- Front-end managed by React, contains all application components plus the api.js file to contact the back-end 
 │   ├── httpsCert/  -- Contains the self signed certificate and the private key associated with the certificate 
@@ -39,16 +41,20 @@ The following commands should all be run in separate terminals, from the root of
 
 ```shell
 # Run the front-end server of the vulnerable application in development mode
-cd vulnerable/client && npm run dev
+cd vulnerable/client && npm install
+npm run dev
 
 # Run the back-end of the vulnerable application
-cd vulnerable/server && node index.js
+cd vulnerable/server && npm install
+node index.js
 
 # Run the front-end server of the fixed application in development mode
-cd secure/client && npm run dev
+cd secure/client && npm install
+npm run dev
 
 # Run the back-end of the fixed application
-cd secure/server && node index.js
+cd secure/server && npm install
+node index.js
 ```
 
 There should be multiple servers listening on separate ports:

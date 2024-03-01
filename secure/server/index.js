@@ -91,35 +91,41 @@ app.post("/api/sessions", async (req, res) => {
     const db = new sqlite3.Database("cms.db", (err) => {
       if (err) throw err;
     });
-
-    db.get(
-      "SELECT * FROM users WHERE mail = ? and pswHash = ?",
-      [req.body.username, hash],
-      async (err, row) => {
-        if (err) {
-          return err;
-        } else if (row === undefined) {
-          res.status(400).json({ error: "The Email or Password is wrong " });
-        } else {
-          const userInfo = {
-            id: row.id,
-             createdAt: new Date().toISOString() 
-          };
-          const user = await getUserById(row.id);
-          if (user) {
-            const token = jwt.sign(userInfo, jwtSecret,{expiresIn:'7d'});
-
-            return res
-              .cookie("access_token", token, {
-                httpOnly: true,
-                maxAge: 1000 * 60 * 60 * 24 * 7 /* 7 days */,
-              })
-              .status(200)
-              .json(user);
+    try {
+      db.get(
+        "SELECT * FROM users WHERE mail = ? and pswHash = ?",
+        [req.body.username, hash],
+        async (err, row) => {
+          if (err) {
+            return err;
+          } else if (row === undefined) {
+            res.status(400).json({ error: "The Email or Password is wrong " });
+          } else {
+            const userInfo = {
+              id: row.id,
+               createdAt: new Date().toISOString() 
+            };
+            const user = await getUserById(row.id);
+            if (user) {
+              const token = jwt.sign(userInfo, jwtSecret,{expiresIn:'7d'});
+  
+              return res
+                .cookie("access_token", token, {
+                  httpOnly: true,
+                  maxAge: 1000 * 60 * 60 * 24 * 7 /* 7 days */,
+                })
+                .status(200)
+                .json(user);
+            }
           }
         }
-      }
-    );
+      );
+    } catch (error) {
+      res.status(500).json({
+        error: "Unable to contact the database.",
+      });
+    }
+    
   });
 });
 
