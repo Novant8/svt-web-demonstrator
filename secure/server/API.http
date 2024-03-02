@@ -8,7 +8,7 @@ Content-Type: application/json
     "password": "password!"
     
 }
-### LOGIN AS ADMIN
+### TEST CWE-89 :SQL INJECTION - LOGIN AS ADMIN
 POST /api/sessions HTTP/1.1
 Host: localhost:3002
 Content-Type: application/json
@@ -18,7 +18,7 @@ Content-Type: application/json
     "password": "passwordddddd"
     
 }
-###REGISTER USING EVIL REGEX
+### TEST CWE-1333 Regex Attack - REGISTER USING EVIL REGEX
 POST /api/register HTTP/1.1
 Host: localhost:3002
 Content-Type: application/json
@@ -29,7 +29,7 @@ Content-Type: application/json
     "password": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!!",
     "admin":false 
 }
-###REGISTER MALICIOUS USER
+### TEST CWE-915 Mass assignment - Registration of a malicious user with administrator privileges.
 POST /api/register HTTP/1.1
 Host: localhost:3002
 Content-Type: application/json
