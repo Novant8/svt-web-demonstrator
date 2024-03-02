@@ -13,6 +13,9 @@ const HOST = "http://localhost:3001";
  * @throws {Error}                            - If the response is an OK status code, or if any error occurrs during the parsing.
  */
 async function getErrorMessageFromResponse(res) {
+  if(typeof res === 'undefined')
+    return "Unable to connect to the server.";
+
   if (res.status >= 200 && res.status < 300) throw new Error("Response is OK!");
 
   let { error, errors } = res.data;
