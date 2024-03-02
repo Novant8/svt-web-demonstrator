@@ -317,6 +317,7 @@ Spawn a reverse shell:
         "admin": false 
     }
     ```
+2. We can now see that the server will not respond to our request or any future ones. the only way to resume normal operation is to shut down and restart the server from the command line.
 
 ### CWE-915: Improperly Controlled Modification of Dynamically-Determined Object Attributes
 1. Send a POST request to `http://localhost:3001/api/register` like this one :
@@ -326,8 +327,8 @@ Spawn a reverse shell:
     Content-Type: application/json
 
     {
-        "name": "prova",
-        "username": "prova@example.org",
+        "name": "test",
+        "username": "test@example.org",
         "password": "password",
         "admin": true 
     }   
@@ -337,8 +338,8 @@ Spawn a reverse shell:
 ### CWE-328: Use of Weak Hash
 
 1. Get the password hash, in this case trivially by looking at the database
-2. Use tools such as hashcat to recover the original password. 
-3. Download a list of known passwords such as in this case rockyou.txt and run the following command to implement a dictionary attack:
+2. Use tools such as [hashcat](https://linux.how2shout.com/how-to-install-hashcat-on-ubuntu-22-04-20-04-lts/) to recover the original password. 
+3. Download a list of known passwords such as in this case [rockyou.txt](https://github.com/praetorian-inc/Hob0Rules/blob/master/wordlists/rockyou.txt.gz) and save the hash password in a file like [passHash.txt](https://github.com/Novant8/svt-web-demonstrator/blob/master/exploit/passHash.txt). Run the following command to implement a dictionary attack:
     ```shell
     hashcat -m 0 -a 0 passHash.txt rockyou.txt
     ```
@@ -373,7 +374,7 @@ Spawn a reverse shell:
 
 ### CWE-89: SQL Injection
 
-1. Do a POST request to `http://localhost:3001/api/session` like this one :
+1. Do a POST request to `http://localhost:3001/api/session` like this one or insert this credentials in the browser :
     ```http
     POST /api/sessions HTTP/1.1
     Host: localhost:3001
@@ -417,6 +418,7 @@ Spawn a reverse shell:
     console.log(token)
     ```
 2. Now that you have obtained the token you just enter it in in the cookie section of the front-end or enter it in a POST request to get the logged in user/admin priveleges. 
+3. In the cookie section insert "access_token" in the name field and the token received in the value field.
 
 ### CWE-522: Insufficiently Protected Credentials
 
@@ -479,7 +481,7 @@ Spawn a reverse shell:
     
     }
     ```
-3. Now that you have obtained the modified token replace it with the original token and reload the page.
+3. Now that you have obtained the modified token, do a log out , replace it with the original token by placing it in the cookie section and reload the page.
 
 ### CWE-209: Generation of Error Message Containing Sensitive Information
 1. In the log in function there is a console.trace(err) that in case of an error reports all the path following the error. If by chance there should be an internal system error, we can simulate it by simply changing the name of the database, the attacker receives this error.
@@ -489,6 +491,6 @@ Spawn a reverse shell:
 
 ### CWE-319: Cleartext Transmission of Sensitive Information
 
-1. Use a tool such as wireshark to see the communication between client and server. 
+1. Use a tool such as wireshark to see the communication between client and server using the loopback interface. 
 ![cwe-319](./img/cwe-319_WiresharkLoginPhase.png)
 2. You now have the credentials to enter to authenticate
