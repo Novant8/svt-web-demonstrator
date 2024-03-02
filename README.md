@@ -118,7 +118,7 @@ This section includes step-by-step guides for executing each exploit. For a more
 
 ### CWE-79: Improper Neutralization of Input During Web Page Generation ("Cross-site Scripting", XSS) - Stored
 
-1. Use `netcat` to create a service listening on port 4242 of the attacker's machine:
+1. Use `netcat` to create a service listening on port 4242 of the attacker's machine by executing this short shell script:
     ```shell
     while true; do nc -lvp 4242; echo '\n'; done
     ```
@@ -235,7 +235,7 @@ Download an image from the local server:
 
 ### CWE-78: Improper Neutralization of Special Elements used in an OS Command (’OS Command Injection’)
 
-1. Use `netcat` to create a service listening on port 4242 of the attacker's machine:
+1. Use `netcat` to create a service listening on port 4242 of the attacker's machine by executing this short shell script:
     ```shell
     while true; do nc -lvp 4242; echo '\n'; done
     ```
@@ -281,7 +281,7 @@ Show the contents of the root folder in the API server's logs:
 3. Look at the API server's logs inside the terminal.
 
 Spawn a reverse shell:
-1. Use `netcat` to create a service listening on port 4242 of the attacker's machine:
+1. Use `netcat` to create a service listening on port 4242 of the attacker's machine by executing this short shell script:
     ```shell
     while true; do nc -lvp 4242; echo '\n'; done
     ```
