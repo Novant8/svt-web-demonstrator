@@ -112,7 +112,7 @@ Secure version users:
 
 ## Executing the exploits
 
-This section includes step-by-step guides for executing each exploit. For a more detailed view of the exploits, the reasons they work and the relative fixes, refer to the PDF report.
+This section includes step-by-step guides for executing each exploit. For a more detailed view of the exploits, the reasons they work and the relative fixes, refer to the [PDF report](./Vulnerability_Report.pdf).
 
 <u>All exploits will be assumed to be run from the vulnerable version of the application</u>. The steps for the fixed version are the same, but be careful of the ports inside the links and the HTTP requests.
 
